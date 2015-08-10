@@ -4,7 +4,7 @@
 #   source bash.extras.interactive.sh
 # -Christopher Welborn 8-9-13 (not all pieces are original work)
 
-# --------------------------- INITIALIZE/ COLORS --------------------
+# ---------------------------------- COLORS ----------------------------------
 
 # Define some colors first: (SC2034 = Unused vars (they are exported))
             red='\e[0;31m'     # shellcheck disable=SC2034
@@ -41,32 +41,7 @@ else
     HILIT=${cyanprompt}  # local machine: prompt will be partly cyan
 fi
 
-
-# ----------------------------- WELCOME ------------------------------
-# Looks best on a terminal with black background.....
-#Welcome, bash version
-echo -e "${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}   Welcome! ${RED}${NC}\n"
-#Show Date
-date
-echo " "
-#Show fortune
-if [[ -x /usr/games/fortune ]]; then
-    if [[ -x /home/cj/gems/bin/lolcat ]]; then
-        # Add rainbow color if available.
-        fortune -a | lolcat
-    else
-        fortune -a
-    fi
-fi
-echo " "
-
-# ---------------------------- PROMPT FUNCTIONS -------------------------
-
-# v--------------------------------------------------ORIGINAL PROMPT HERE ----------------]
-# set a fancy prompt (non-color, overwrite the one in /etc/profile)
-#PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-# ^--------------------------------------------------ORIGINAL PROMPT HERE ----------------]
-
+# ------------------------------- PROMPT FUNCTIONS ----------------------------
 
 # Following simple/default prompt function from original simple/fancy prompts...
     function simpleprompt()
@@ -151,16 +126,32 @@ else
   # Fall back to cj's prompt where powerline-shell is not available.
   cjprompt
 fi
-# ----------------------------------------------------------------------------
 
-# Print Divider
-printf "_____________________________________\n\n\n"
+# ---------------------------------- GOODBYE ---------------------------------
+# Setup Exit Message
+function _exit_message() {
+    echo -e "\n${RED}Goodbye ${USER:-.}...$NC"
+}
+# Trap/Set Exit Function
+trap _exit_message EXIT
 
-# Go Home Cj!
-if [[ -d /home/cj ]]; then
-    cd /home/cj
-else
-    cd ~
+# --------------------------- AUTO-LOADED PROGRAMS ---------------------------
+
+# Alias Manager scripts.
+aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
+if [[ -f "$aliasmgrfile" ]]; then
+  echo ""
+  source "$aliasmgrfile"
+fi
+
+# Show fortune
+if [[ -x /usr/games/fortune ]]; then
+    if [[ -x /home/cj/gems/bin/lolcat ]]; then
+        # Add rainbow color if available.
+        fortune -a | lolcat
+    else
+        fortune -a
+    fi
 fi
 
 # Print cj's todo list.
@@ -169,15 +160,21 @@ if [ "${todolocation}" == "" ]; then
     echo "todo: Can't find the todo app."
 else
     # print todo list
+    echo ""
     todo
 fi
 
-# Print current dir
-pwd
+# Welcome message.
+welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
+hoststr="${CYAN}$(hostname)${NC}"
+ipstr="${RED}$(hostname -I)${NC}"
+echo -e "\n$welcomemsg  $(date)  $hoststr ( $ipstr)"
 
-#Setup Exit Message
-function _exit_message() {
-    echo -e "\n${RED}Goodbye...$NC"
-}
-#Trap/Set Exit Function
-trap _exit_message EXIT
+# Go Home Cj!
+if [[ -d /home/cj ]]; then
+    cd /home/cj
+else
+    cd
+fi
+
+

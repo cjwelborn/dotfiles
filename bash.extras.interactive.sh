@@ -5,6 +5,11 @@
 # -Christopher Welborn 8-9-13 (not all pieces are original work)
 
 # ---------------------------------- COLORS ----------------------------------
+if [[ -d "/home/cjwelborn" ]]; then
+    cjhome="/home/cjwelborn"
+else
+    cjhome="/home/cj"
+fi
 
 # Define some colors first: (SC2034 = Unused vars (they are exported))
             red='\e[0;31m'     # shellcheck disable=SC2034
@@ -118,9 +123,9 @@ function _update_ps1() {
   # Final args to use with powerline-shell.
   local pw_args=("--cwd-max-depth" "$pw_maxdepth" "--mode" "$pw_mode" "--shell" "bash")
   # Last command's return code is always the last arg ($?).
-  export PS1="$(/home/cj/powerline-shell.py "${pw_args[@]}" $? 2>/dev/null)"
+  export PS1="$("$cjhome/powerline-shell.py" "${pw_args[@]}" $? 2>/dev/null)"
 }
-if [[ -f "/home/cj/powerline-shell.py" ]]; then
+if [[ -f "$cjhome/powerline-shell.py" ]]; then
   export PROMPT_COMMAND="_update_ps1; $PROMPT_COMMAND"
 else
   # Fall back to cj's prompt where powerline-shell is not available.
@@ -142,11 +147,13 @@ aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
 if [[ -f "$aliasmgrfile" ]]; then
   echo ""
   source "$aliasmgrfile"
+elif [[ -f "$cjhome/bash.alias.sh" ]]; then
+    source "$cjhome/bash.alias.sh"
 fi
 
 # Show fortune
 if [[ -x /usr/games/fortune ]]; then
-    if [[ -x /home/cj/gems/bin/lolcat ]]; then
+    if [[ -x "$cjhome/gems/bin/lolcat" ]]; then
         # Add rainbow color if available.
         fortune -a | lolcat
     else
@@ -155,8 +162,7 @@ if [[ -x /usr/games/fortune ]]; then
 fi
 
 # Print cj's todo list.
-todolocation="$(which todo)"
-if [ "${todolocation}" == "" ]; then
+if ! which todo &>/dev/null; then
     echo "todo: Can't find the todo app."
 else
     # print todo list
@@ -168,13 +174,13 @@ fi
 welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
 hoststr="${CYAN}$(hostname)${NC}"
 ipstr="${RED}$(hostname -I)${NC}"
+if (( ${#ipstr} > 24 )); then
+  ipstr="${ipstr:0:24} ..."
+fi
 echo -e "\n$welcomemsg  $(date)  $hoststr ( $ipstr)"
 
 # Go Home Cj!
-if [[ -d /home/cj ]]; then
-    cd /home/cj
-else
-    cd
-fi
+cd
+
 
 

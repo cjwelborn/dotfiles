@@ -83,4 +83,4 @@ export Gtkthemessys="$Gtkthemessystem"
 # Beep sound file to play with the new 'beep' alias.
 export BEEP="/usr/share/sounds/KDE-Im-Message-In.ogg"
 
-echo "Variables loaded... (bash.variables.sh)"
+[ -n "$PS1" ] && echo "Variables loaded... (bash.variables.sh)"

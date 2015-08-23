@@ -22,8 +22,14 @@ function _echo {
     fi
 }
 
+if [[ -d /home/cjwelborn ]]; then
+    cjhome='/home/cjwelborn'
+else
+    cjhome='/home/cj'
+fi
+
 # Get Cj's Variables first, so they are available in other scripts.
-variablefile="/home/cj/bash.variables.sh"
+variablefile="$cjhome/bash.variables.sh"
 if [[ -f "$variablefile" ]]; then
     source "$variablefile"
 else
@@ -31,49 +37,49 @@ else
 fi
 
 # Use cj's .local bin for everyone
-if [[ -d /home/cj/.local/bin ]]; then
-    export PATH=/home/cj/.local/bin:$PATH
+if [[ -d $cjhome/.local/bin ]]; then
+    export PATH=$cjhome/.local/bin:$PATH
 fi
 
-if [[ -d /home/cj/bin ]]; then
-    export PATH=/home/cj/bin:$PATH
+if [[ -d $cjhome/bin ]]; then
+    export PATH=$cjhome/bin:$PATH
 fi
 
 # Paths for go language.
 #export GOROOT=/usr/bin
-if [[ -d /home/cj/gocode ]]; then
-    export GOPATH=/home/cj/gocode
+if [[ -d $cjhome/gocode ]]; then
+    export GOPATH=$cjhome/gocode
     export PATH=$PATH:$GOPATH/bin
 fi
 
 # Paths for node.js executables.
-if [[ -d /home/cj/node_modules/.bin ]]; then
-    export PATH=$PATH:/home/cj/node_modules/.bin
+if [[ -d $cjhome/node_modules/.bin ]]; then
+    export PATH=$PATH:$cjhome/node_modules/.bin
 fi
 
 # Install path for ruby gems.
-export GEM_HOME=/home/cj/gems
+export GEM_HOME=$cjhome/gems
 # Paths for ruby/gem executables.
-if [[ -d /home/cj/gems/bin ]]; then
-    export PATH=$PATH:/home/cj/gems/bin
+if [[ -d $cjhome/gems/bin ]]; then
+    export PATH=$PATH:$cjhome/gems/bin
 fi
 
 # Executables for Haskell/Cabal
-if [[ -d /home/cj/.cabal/bin ]]; then
-    export PATH=$PATH:/home/cj/.cabal/bin
+if [[ -d $cjhome/.cabal/bin ]]; then
+    export PATH=$PATH:$cjhome/.cabal/bin
 fi
 
 # Export python startup file to enable auto-complete/startup features.
-pystartupfile=/home/cj/.pystartup
+pystartupfile=$cjhome/.pystartup
 if [[ -f $pystartupfile ]]; then
-    export PYTHONSTARTUP=/home/cj/.pystartup
+    export PYTHONSTARTUP=$cjhome/.pystartup
 else
     _echo "Python startup file not found: ${pystartupfile}"
 fi
 
 # Rust source path for racer.
-if [[ -d /home/cj/workspace/clones/rust/src ]] && [[ -z "$RUST_SRC_PATH" ]]; then
-    export RUST_SRC_PATH=/home/cj/workspace/clones/rust/src
+if [[ -d $cjhome/workspace/clones/rust/src ]] && [[ -z "$RUST_SRC_PATH" ]]; then
+    export RUST_SRC_PATH=$cjhome/workspace/clones/rust/src
 fi
 
 # Options for Scratchbox (cross-compilation setup for raspberry-pi)

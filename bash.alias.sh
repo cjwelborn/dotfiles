@@ -14,6 +14,9 @@
 #
 #     ...if you use a different style it may or may not
 #        break the program and I can't help you.
+
+
+
 # Aliases:
 alias aptfix="sudo apt-get -f update" # try to fix broken packages...
 alias cjaliases="aliasmgr -pca" # print cjs aliases
@@ -21,8 +24,7 @@ alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias ftpweb="sftp welbornp@welbornproductions.net" # opens sftp shell for welbornproductions.net
 alias grep="grep -E --color=always" # use colors and regex for grep always
-# shellcheck disable=SC2139
-alias idledev="pythondev $Clones/cpython/Lib/idlelib/idle.py" # Start the cpython dev version Idle
+alias idledev="pythondev \$Clones/cpython/Lib/idlelib/idle.py" # Start the cpython dev version Idle
 alias kdelogout="qdbus org.kde.ksmserver /KSMServer logout 0 0 2" # logout command for KDE...
 alias l="ls -a --color --group-directories-first" # Shortcut for ls (also helpful for my broken keyboard)
 alias la="ls -Fa --color" # list all files in dir
@@ -33,8 +35,7 @@ alias lt="tree -a --dirsfirst | less -W" # list dir using tree
 alias mkdir="mkdir -p" # prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
-# shellcheck disable=SC2139
-alias npminstall="npm install --prefix=$HOME" # Use npm install with a prefix set to $HOME
+alias npminstall="npm install --prefix=\$HOME" # Use npm install with a prefix set to $HOME
 alias perlmods="cpan -l | sort" # List all installed perl modules (shortcode for cpan -l)
 alias phpi="php5 -a" # Just a shortcut to php5 -a, thats all.
 alias pipsearch="sudo pip search" # search for pypi package by name
@@ -45,7 +46,6 @@ alias profilestackless="stackless -m cProfile" # Profile a stackless script usin
 alias pwd="pwd -P" # show actual directory (not symlink)
 alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.html"' # Views the documentation pages for PyKDE using chrome.
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io" # SSH into koding.com vm (with XForwarding)
-alias sshweb="ssh cjwelborn@cjwelborn.webfactional.com" # Opens SSH session at welbornproductions.net
 alias treed="tree -d | less" # shows directory tree, directories only...
 alias twistedconsole="python -m twisted.conch.stdio" # Runs twisted console (reactor already running)
 alias ubuntuversion="lsb_release -a" # shows current ubuntu distro version/codename
@@ -114,11 +114,14 @@ function apache()
 function apachelog()
 {
 	# views apache2 logs (error.log by default)
-	if [[ -z "$1" ]]; then
-		local logfile="/var/log/apache2/error.log"
+	if [[ -n "$Logs" ]]; then
+		local logdir=$Logs
+		local logname="${1:-error}_wp_${2:-site}.log"
 	else
-		local logfile="/var/log/apache2/$1.log"
+		local logdir="/var/log/apache2"
+		local logname="${1:-error}.log"
 	fi
+	local logfile="$logdir/$logname"
 	echo "opening apache log: $logfile"
 	cat "$logfile"
 }
@@ -213,14 +216,13 @@ function cdgodir()
 
 }
 
-function cdsym
+function cdsym()
 {
 	# Cd to actual target directory for symlink.
 	cd "$(pwd -P)"
 	# This is only here for alias manager. :(
-	:
+	: :
 }
-
 
 function echo_failure()
 {
@@ -268,28 +270,28 @@ function echo_warning()
 	printf ']\n'
 }
 
-function fe
+function fe()
 {
 	# find file and execute command on it
 	find . -type f -iname "\*${1:-}\*" -exec "${2:-file}" {} \;  ;
 	# Alias manager, force function.
-	:
+	: :
 }
 
-function ff
+function ff()
 {
 	# find file
 	find . -type f -iname "\*$*\*" -ls ;
 	# Force function for alias manager.
-	:
+	: :
 }
 
-function goget
+function goget()
 {
 	# Download a go package.
 	sudo -i go get "$@"
 	# Force function for alias manager :(
-	:
+	: :
 }
 
 function inetinfo()
@@ -653,6 +655,8 @@ function sshver()
 {
 	# connect to ssh server and get version, then disconnect
 	telnet "$1" 22 | grep "SSH"
+	# Force alias manager to make this a function :(
+	: :
 }
 
 function switchroot()
@@ -670,17 +674,17 @@ function switchroot()
 	    echo "usage: switchroot <name> [other args]"
 		return
 	fi
-    # Have args.
-    args=("$@")
-    usingname="${args[0]}"
+	    # Have args.
+	    args=("$@")
+	    usingname="${args[0]}"
 	if [[ "$1" =~ ^- ]]; then
 		# args passed without name.
 		usingname=$defaultname
 		chrootargs=("$@")
-    else
+	    else
 		# name was passed, trim the rest of the args.
-        chrootargs=("${args[@]:1}")
-    fi
+	        chrootargs=("${args[@]:1}")
+	    fi
 
 
 	if (( ${#chrootargs[@]} == 0 )); then

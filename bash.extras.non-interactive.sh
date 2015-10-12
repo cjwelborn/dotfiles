@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This file includes exports that should be enabled in any mode,
 # non-interactive, or interactive.
 # To use it edit /etc/bash.bashrc (for all users) to include:
@@ -86,6 +88,12 @@ fi
 if [[ -d /srv/chroot/wheezy_raspbian ]]; then
     export SB2=/srv/chroot/wheezy_raspbian
     export SB2OPT='-t ARM'
+fi
+
+# Node version manager.
+if [[ -d "$cjhome/.nvm" ]]; then
+    export NVM_DIR="$cjhome/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
 fi
 
 # Make alt + shift toggle us/greek layout (enables using chars like λ)

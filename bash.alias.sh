@@ -18,12 +18,14 @@
 
 
 # Aliases:
-alias aptfix="sudo apt-get -f update" # try to fix broken packages...
+alias aptfix="sudo apt-get install -f" # try to fix broken packages...
+alias aptinstall="sudo apt-get install" # Shortcut to sudo apt-get install
 alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias ftpweb="sftp welbornp@welbornproductions.net" # opens sftp shell for welbornproductions.net
 alias grep="grep -E --color=always" # use colors and regex for grep always
+alias howdoi="howdoi -c" # use colors for howdoi.
 alias idledev="pythondev \$Clones/cpython/Lib/idlelib/idle.py" # Start the cpython dev version Idle
 alias kdelogout="qdbus org.kde.ksmserver /KSMServer logout 0 0 2" # logout command for KDE...
 alias l="ls -a --color --group-directories-first" # Shortcut for ls (also helpful for my broken keyboard)
@@ -46,6 +48,8 @@ alias profilestackless="stackless -m cProfile" # Profile a stackless script usin
 alias pwd="pwd -P" # show actual directory (not symlink)
 alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.html"' # Views the documentation pages for PyKDE using chrome.
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io" # SSH into koding.com vm (with XForwarding)
+alias temp="which sensors &>/dev/null && sensors -f" # Show temperature for machines with 'sensors' installed.
+alias tmux="tmux -2" # Use 256 colors with tmux.
 alias treed="tree -d | less" # shows directory tree, directories only...
 alias twistedconsole="python -m twisted.conch.stdio" # Runs twisted console (reactor already running)
 alias ubuntuversion="lsb_release -a" # shows current ubuntu distro version/codename
@@ -76,7 +80,7 @@ function addrequirement()
 			echo "Unable to add '${addedstr}' to requirements.txt"
 		fi
 	else
-		echo "This will create a requirements.txt in: ${thisdir}"
+		echo "This will create a requirements.txt in: $PWD"
 		local answer=""
 		read -p "Do you want to continue? (y/N): " answer
 		if [[ -z "$answer" ]]; then
@@ -207,7 +211,8 @@ function cdgodir()
 		return 1
 	fi
 
-	local godirname="$(godir "$1")"
+	local godirname
+	godirname="$(godir "$1")"
 	if (( $? == 0 )); then
 		cd "$godirname"
 		return 0
@@ -548,7 +553,8 @@ function psmemory()
 	    return
 	fi
 
-	local pid=$(pidname "$1" -p)
+	local pid
+    pid=$(pidname "$1" -p)
 	if [[ -z "$pid" ]]; then
 	    echo "Unable to find a command with: $1"
 	    return
@@ -839,6 +845,7 @@ export echo_warning
 export fe
 export ff
 export goget
+export howdoi
 export inetinfo
 export kd
 export mkdircd

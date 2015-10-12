@@ -1,3 +1,4 @@
+#!/bin/bash
 # This file includes prompts, colors, and possibly other stuff for a
 # bash interactive session.
 # To use it edit /etc/bash.bashrc (for all users) to include:
@@ -9,6 +10,13 @@ if [[ -d "/home/cjwelborn" ]]; then
     cjhome="/home/cjwelborn"
 else
     cjhome="/home/cj"
+fi
+
+# Set dir_colors if it exists.
+dircolorsfile="$cjhome/.dir_colors"
+if [[ -e "$dircolorsfile" ]]; then
+    eval "$(dircolors "$dircolorsfile")"
+    echo "dir_colors set from: $dircolorsfile"
 fi
 
 # Define some colors first: (SC2034 = Unused vars (they are exported))
@@ -51,11 +59,15 @@ fi
 # Following simple/default prompt function from original simple/fancy prompts...
     function simpleprompt()
     {
+        # depends on debian_chroot being available:
+        # shellcheck disable=SC2154
         PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
     }
 
     function defaultprompt()
     {
+        # depends on debian_chroot being available:
+        # shellcheck disable=SC2154
         PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
     }
 
@@ -116,14 +128,16 @@ fi
 function _update_ps1() {
   # Maximum number of directories to show. -Set by Cj.
   # If --cwd-max-depth isn't working, --cwd-only will.
-  local pw_maxdepth=3
+  local pline_maxdepth=3
   # Display style. Patched is fancy, flat is plain, compatible is in between.
-  local pw_mode="patched" # patched, compatible, or flat.
+  local pline_mode="patched" # patched, compatible, or flat.
 
   # Final args to use with powerline-shell.
-  local pw_args=("--cwd-max-depth" "$pw_maxdepth" "--mode" "$pw_mode" "--shell" "bash")
+  local pline_args=("--cwd-max-depth" "$pline_maxdepth" "--mode" "$pline_mode" "--shell" "bash")
   # Last command's return code is always the last arg ($?).
-  export PS1="$("$cjhome/powerline-shell.py" "${pw_args[@]}" $? 2>/dev/null)"
+  local pline_ps1
+  pline_ps1="$("$cjhome/powerline-shell.py" "${pline_args[@]}" $? 2>/dev/null)"
+  export PS1=$pline_ps1
 }
 if [[ -f "$cjhome/powerline-shell.py" ]]; then
   export PROMPT_COMMAND="_update_ps1; $PROMPT_COMMAND"
@@ -172,15 +186,12 @@ fi
 
 # Welcome message.
 welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
-hoststr="${CYAN}$(hostname)${NC}"
-ipstr="${RED}$(hostname -I)${NC}"
+hoststr="${CYAN}$(hostname)"
+ipstr="${RED}$(hostname -I)"
 if (( ${#ipstr} > 24 )); then
-  ipstr="${ipstr:0:24} ..."
+  ipstr="${ipstr:0:24}${NC} ..."
 fi
 echo -e "\n$welcomemsg  $(date)  $hoststr ( $ipstr)"
 
 # Go Home Cj!
 cd
-
-
-

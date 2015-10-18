@@ -167,11 +167,11 @@ fi
 
 # Show fortune
 if [[ -x /usr/games/fortune ]]; then
-    if [[ -x "$cjhome/gems/bin/lolcat" ]]; then
+    if which lolcat &>/dev/null; then
         # Add rainbow color if available.
-        fortune -a | lolcat
+        fortune -e -a | lolcat
     else
-        fortune -a
+        fortune -e -a
     fi
 fi
 

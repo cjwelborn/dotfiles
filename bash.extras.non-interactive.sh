@@ -27,7 +27,19 @@ function _echo {
 if [[ -d /home/cjwelborn ]]; then
     cjhome='/home/cjwelborn'
 else
-    cjhome='/home/cj'
+    if [[ -d "/home/cj" ]]; then
+        cjhome="/home/cj"
+    else
+        # Not one of my main machines.
+        if [[ -n "$HOME" ]] && [[ -d "$HOME" ]]; then
+            cjhome=$HOME
+        elif [[ -n "$USER" ]] && [[ -d "/home/$USER" ]]; then
+            cjhome="/home/$USER"
+        else
+            _echo "Cannot find a suitable /home directory!"
+            cjhome="/root"
+        fi
+    fi
 fi
 
 # Get Cj's Variables first, so they are available in other scripts.
@@ -56,14 +68,32 @@ fi
 
 # Paths for node.js executables.
 if [[ -d $cjhome/node_modules/.bin ]]; then
-    export PATH=$PATH:$cjhome/node_modules/.bin
+    export PATH="$PATH:$cjhome/node_modules/.bin"
+fi
+
+# Node version manager.
+if [[ -d "$cjhome/.nvm" ]]; then
+    export NVM_DIR="$cjhome/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+    # Add all node version's bin directories to path.
+    shopt -s nullglob
+    nvmversions=("$cjhome"/.nvm/versions/*/*)
+    if (( ${#nvmversions[@]} > 0 )); then
+        for _nvm_verdir in "${nvmversions[@]}"; do
+            _nvm_verbindir="${_nvm_verdir}/bin"
+            if [[ -d "${_nvm_verbindir}" ]]; then
+                export PATH="$PATH:${_nvm_verbindir}"
+            fi
+        done
+    fi
+    shopt -u nullglob
 fi
 
 # Install path for ruby gems.
 export GEM_HOME=$cjhome/gems
 # Paths for ruby/gem executables.
 if [[ -d $cjhome/gems/bin ]]; then
-    export PATH=$PATH:$cjhome/gems/bin
+    export PATH="$PATH:$cjhome/gems/bin"
 fi
 
 # Executables for Haskell/Cabal
@@ -88,12 +118,6 @@ fi
 if [[ -d /srv/chroot/wheezy_raspbian ]]; then
     export SB2=/srv/chroot/wheezy_raspbian
     export SB2OPT='-t ARM'
-fi
-
-# Node version manager.
-if [[ -d "$cjhome/.nvm" ]]; then
-    export NVM_DIR="$cjhome/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
 fi
 
 # Make alt + shift toggle us/greek layout (enables using chars like λ)

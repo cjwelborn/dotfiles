@@ -11,8 +11,18 @@ if [[ -d "/home/cjwelborn" ]]; then
 else
     cjhome="/home/cj"
 fi
+
 # Log some debug info while loading this script.
-bashextraslogfile="$cjhome/bash.extras.interactive.log"
+if [[ -w "$cjhome" ]]; then
+  bashextraslogfile="$cjhome/bash.extras.interactive.log"
+elif [[ -w "$HOME" ]]; then
+  bashextraslogfile="$HOME/bash.extras.interactive.log"
+elif [[ -w "/home/$USER" ]]; then
+  bashextraslogfile="/home/$USER/bash.extras.interactive.log"
+else
+  _echo &>/dev/null && _echo "No log file to write to."
+fi
+
 function bashextraslog {
     # Write to the bash.extras.interactive.log
     echo -e "$@" >> "$bashextraslogfile"
@@ -88,8 +98,7 @@ function defaultprompt()
 }
 
 # Following 3rd party 'Power Prompt' & 'Fast Prompt' added by Cj
-function fastprompt()
-{
+function fastprompt() {
     unset PROMPT_COMMAND
     case $TERM in
         *term | rxvt )
@@ -100,14 +109,13 @@ function fastprompt()
         PS1="[\h] \W > " ;;
     esac
 }
-_powerprompt()
-{
+
+function _powerprompt() {
        # shellcheck disable=SC2034
         LOAD=$(uptime|sed -e "s/.*: \([^,]*\).*/\1/" -e "s/ //g")
 }
 
-function powerprompt()
-{
+function powerprompt() {
 
     PROMPT_COMMAND="_powerprompt"
     case $TERM in
@@ -120,7 +128,7 @@ function powerprompt()
             PS1="[\A - \$LOAD]\n[\u@\h \#] \W > " ;;
     esac
 }
-
+powerline_file="$cjhome/powerline-shell.py"
 # Powerline-shell prompt.
 function _update_powerline_ps1() {
   # Maximum number of directories to show. -Set by Cj.
@@ -133,7 +141,7 @@ function _update_powerline_ps1() {
   local pline_args=("--cwd-max-depth" "$pline_maxdepth" "--mode" "$pline_mode" "--shell" "bash")
   # Last command's return code is always the last arg ($?).
   local pline_ps1
-  pline_ps1="$("$cjhome/powerline-shell.py" "${pline_args[@]}" $? 2>/dev/null)"
+  pline_ps1="$("$powerline_file" "${pline_args[@]}" $? 2>/dev/null)"
   export PS1=$pline_ps1
 }
 
@@ -162,11 +170,15 @@ function listprompts()
 
 
 # Use powerline shell prompt if available -------------------------------------
-if [[ -e "$cjhome/powerline-shell.py" ]]; then
+if [[ -x "$powerline_file" ]]; then
     powerlineprompt
 else
     # Fall back to cj's prompt where powerline-shell is not available.
-    bashextraslog "Falling back to cjprompt (missing $cjhome/powerline-shell.py)"
+    if [[ -e "$powerline_file" ]]; then
+        bashextraslog "Falling back to cjprompt, not executable: $powerline_file"
+    else
+        bashextraslog "Falling back to cjprompt, missing: $powerline_file"
+    fi
     cjprompt || {
         simpleprompt
         bashextraslog "Even cj's prompt failed, falling back to simple prompt."

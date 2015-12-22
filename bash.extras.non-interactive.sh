@@ -7,7 +7,7 @@
 #   # If not running interactively, don't do anything --------------------
 #   [ -z "$PS1" ] && return
 #
-# -Christopher Welborn 8-9-13 (not all pieces are original work)
+# -Christopher Welborn 8-9-13
 
 # Shell options
 # Allow using directory-variables as commands to cd into that directory.

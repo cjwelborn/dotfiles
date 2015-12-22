@@ -9,9 +9,9 @@
 #         No tabs before definitons.
 #         Seperate lines for curly braces.
 #         Use 1 tab depth for start of code block in functions.
-#         Function description is first comment in code block.
+#         Function description is first comment in code block. 
 #         Alias description is comment right side of alias definition.
-#
+#         
 #     ...if you use a different style it may or may not
 #        break the program and I can't help you.
 
@@ -23,6 +23,7 @@ alias aptinstall="sudo apt-get install" # Shortcut to sudo apt-get install
 alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
+alias colr="python3 -m colr" # Shortcut to python3 -m colr.
 alias ftpweb="sftp welbornp@welbornproductions.net" # opens sftp shell for welbornproductions.net
 alias grep="grep -E --color=always" # use colors and regex for grep always
 alias howdoi="howdoi -c" # use colors for howdoi.
@@ -65,7 +66,7 @@ function addrequirement()
 	    echo "       addrequirement <Package> <Version>"
 	    return 1
 	fi
-
+	
 	if [[ -f requirements.txt ]]; then
 		local addedstr="$1"
 		if [[ -z "$2" ]]; then
@@ -147,7 +148,7 @@ function argclinic()
 	    echo "usage: argclinic <file.c>"
 	    return
 	fi
-
+	
 	python3 "$Clones/cpython/Tools/clinic/clinic.py" "$@"
 }
 
@@ -210,7 +211,7 @@ function cdgodir()
 		echo "see: godir --help"
 		return 1
 	fi
-
+	
 	local godirname
 	godirname="$(godir "$1")"
 	if (( $? == 0 )); then
@@ -218,7 +219,7 @@ function cdgodir()
 		return 0
 	fi
 	return 1
-
+	
 }
 
 function cdsym()
@@ -248,7 +249,7 @@ function echo_success()
 {
 	# print a green 'SUCCESS' msg about 71 columns in
 	# all of these were inspired by Fedora's (i think) init.d/functions"
-
+	
 	# move to position
 	echo -en "\\033[${colnumber}G"
 	echo -en "$green"
@@ -257,7 +258,7 @@ function echo_success()
 	echo -n 'SUCCESS'
 	echo -en "$green"
 	echo ']'
-
+	
 }
 
 function echo_warning()
@@ -333,7 +334,7 @@ function kd()
 		pwd -P
 		ls -a --group-directories-first --color=auto
 	fi
-
+	
 }
 
 function mkdircd()
@@ -366,7 +367,7 @@ function my_ip()
 	if [[ -n "$MY_ISP" ]]; then
 		echo "isp: ${MY_ISP}"
 	fi
-
+	
 }
 
 function pip3install()
@@ -379,7 +380,7 @@ function pip3install()
 		echo "    pipargs      : Send any arguments to pip."
 		return
 	fi
-
+	
 	if [[ -z "$2" ]]; then
 		# Install the package under user by default.
 		pip3 install "$@" --user
@@ -399,7 +400,7 @@ function pipall()
 		echo "Usage: pipall [pip args]"
 		return
 	fi
-
+	
 	pips=("pip" "pip3" "pip-pypy")
 	for pipcmd in "${pips[@]}"
 	do
@@ -421,7 +422,7 @@ function pipinstall()
 		echo "    pipargs      : Send any arguments to pip."
 		return
 	fi
-
+	
 	if [[ -z "$2" ]]; then
 		# Install the package under user by default.
 		pip install "$@" --user
@@ -441,7 +442,7 @@ function pipinstallall()
 		echo "Usage: pipallinstall <packagename>"
 		return
 	fi
-
+	
 	pips=("pip" "pip3" "pip-pypy")
 	for pipcmd in "${pips[@]}"
 	do
@@ -451,7 +452,7 @@ function pipinstallall()
 			return
 		fi
 	done
-
+	
 }
 
 function portscan()
@@ -484,8 +485,8 @@ function print_status()
 	local statustype="${1:-success}"
 	# no message will just print the status marker.
 	local statusmsg="${2:- }"
-
-
+	
+	
 	# display msg using print_ functions...
 	case $statustype in
 		"success"|"ok"|"s"|"-")
@@ -523,7 +524,7 @@ function pscores()
 		echo "Usage: pscores <pid>"
 		return
 	fi
-
+	
 	ps -p "$1" -L -o command,pid,tid,psr,pcpu
 }
 
@@ -534,7 +535,7 @@ function pscoresname()
 		echo "Usage: pscoresname <name>"
 		return
 	fi
-
+	
 	pname="$(pidname "$1" --pidonly)"
 	ps -p "$pname" -L -o command,pid,tid,psr,pcpu
 }
@@ -547,28 +548,28 @@ function psmemory()
 	    echo "    * <process> can be a name, or pid."
 	    return
 	fi
-
+	
 	if ! cmdexists pidname; then
 	    echo "This command requires 'pidname' to be installed!"
 	    return
 	fi
-
+	
 	local pid
-    pid=$(pidname "$1" -p)
+	    pid=$(pidname "$1" -p)
 	if [[ -z "$pid" ]]; then
 	    echo "Unable to find a command with: $1"
 	    return
 	fi
-
+	
 	printf "\nps memory usage:\n"
 	ps -v -p "$pid"
-
+	
 	if ps -v --ppid "$pid" 1>/dev/null; then
 	    printf "\nchild memory usage:\n"
 	    ps -v --ppid "$pid"
 	fi
-
-
+	
+	
 }
 
 function pssearch()
@@ -580,14 +581,14 @@ function pssearch()
 	    echo "       * any arguments are passed to grep."
 		return
 	fi
-
+	
 	# Show ps header
 	ps aux | head -n1
-
+	
 	# Show ps | grep info. (filter grep process out)
 	# shellcheck disable=SC2009
 	ps aux | grep "$@" | grep -v "grep"
-
+	
 }
 
 function pylite()
@@ -638,12 +639,12 @@ function spanishword()
 		echo "Usage: spanish <word_to_translate>"
 		return 1
 	fi
-
+	
 	# More help with -h or --help.
 	if [[ "$1" =~ ^(-h)|(--help)$ ]]; then
 	    echo "
 	Usage: spanish <word_to_translate>
-
+	
 	This command is highly dependant on spanish.dictionary.com's
 	layout. If that layout ever changes this command may return
 	gibberish. If that happens, you can either edit the command,
@@ -651,10 +652,10 @@ function spanishword()
 	"
 	    return 1
 	fi
-
+	
 	# Dump the spanish translation page with lynx
 	lynx -dump -nonumbers -width=160 "http://spanish.dictionary.com/definition/$1?src=en" | grep "$1 / "
-
+	
 }
 
 function sshver()
@@ -671,7 +672,7 @@ function switchroot()
 	defaultname="wheezy_raspbian" # the only chroot setup right now.
 	usingname=""
 	chrootargs=""
-
+	
 	if [[ -z "$1" ]]; then
 		echo "Using default chroot: ${defaultname}"
 		usingname=$defaultname
@@ -691,8 +692,8 @@ function switchroot()
 		# name was passed, trim the rest of the args.
 	        chrootargs=("${args[@]:1}")
 	    fi
-
-
+	
+	
 	if (( ${#chrootargs[@]} == 0 )); then
 	    echo "Opening chroot $usingname..."
 	    schroot -c "$usingname"
@@ -700,8 +701,8 @@ function switchroot()
 	    echo "Opening chroot $usingname with args: ${chrootargs[*]}"
 	    schroot -c "$usingname" "${chrootargs[@]}"
 	fi
-
-
+	
+	
 }
 
 function symlink()
@@ -737,7 +738,7 @@ function tarlist()
 		return 1
 	fi
 	tar -tvf "$@"
-
+	
 }
 
 function weatherday()
@@ -770,7 +771,7 @@ function wmswitch()
 		echo " Like: wmswitch lightdm"
 		return 1
 	fi
-
+	
 	sudo dpkg-reconfigure "$1"
 }
 
@@ -795,7 +796,7 @@ function wpmemory()
 	# Shows processes and memory usage for apache.
 	# shellcheck disable=SC2009
 	ps aux | head -n1 && ps aux | grep 'www-data' | grep -v 'grep'
-
+	
 }
 
 function wpprofile()
@@ -808,8 +809,8 @@ function wpprofile()
 	    echo "Creating dir ~/dump/wp-profile"
 		mkdir /home/cj/dump/wp-profile
 	fi
-
-
+	
+	
 	wpcd
 	echo "Starting server..."
 	./manage runprofileserver --kcachegrind "--prof-path=/home/cj/dump/wp-profile" "127.0.0.1:8080"
@@ -822,7 +823,7 @@ function ziplist()
 	    echo "Usage: ziplist <filename.zip>"
 	    return 1
 	fi
-
+	
 	unzip -l "$@"
 }
 
@@ -845,7 +846,6 @@ export echo_warning
 export fe
 export ff
 export goget
-export howdoi
 export inetinfo
 export kd
 export mkdircd

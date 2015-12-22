@@ -122,3 +122,10 @@ fi
 
 # Make alt + shift toggle us/greek layout (enables using chars like λ)
 setxkbmap -option "grp:switch,grp:alt_shift_toggle,grp_led:scroll" -layout "us,gr"
+
+# Set limit for number of processes.
+# ..helps to prevent fork-bombs, accidental or intentional.
+# This is a 'soft' limit (-S), which can be increased by a non-root user.
+#         Default setting: 62312
+# Usual running processes: 252
+ulimit -S -u 5000

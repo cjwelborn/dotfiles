@@ -1,20 +1,28 @@
+#!/bin/bash
 # System-wide .bashrc file for interactive bash(1) shells.
 
 # To enable the settings / commands in this file for login shells as well,
 # this file has to be sourced in /etc/profile.
 
-if [[ -d /home/cjwelborn ]]; then
+if [[ -d "/home/cjwelborn" ]]; then
 	cjhome="/home/cjwelborn"
-else
+elif [[ -d "/home/cj" ]]; then
 	cjhome="/home/cj"
+elif [[ -d "$HOME" ]]; then
+	cjhome=$HOME
+elif [[ -n "$USER" ]] && [[ -d "/home/$USER" ]]; then
+	cjhome="/home/$USER"
+else
+	cjhome="/root"
 fi
 
 # Enable cj's non-interactive bash stuff.
-extrasfile_always="$cjhome/bash.extras.non-interactive.sh"
-if [[ -f "$extrasfile_always" ]]; then
-    source "$extrasfile_always"
+nonactive_extras_name="bash.extras.non-interactive.sh"
+nonactive_extras_path="$cjhome/$nonactive_extras_name"
+if [[ -f "$nonactive_extras_path" ]]; then
+    source "$nonactive_extras_path"
 else
-    [ -n "$PS1" ] && echo "Non-interactive bash file not found: $extrasfile_always"
+    [ -n "$PS1" ] && echo "Non-interactive bash file not found: $nonactive_extras_path"
 fi
 
 # If not running interactively, don't do anything --------------------
@@ -68,10 +76,10 @@ if [ -x /usr/lib/command-not-found -o -x /usr/share/command-not-found ]; then
     function command_not_found_handle {
         # check because c-n-f could've been removed in the meantime
         if [ -x /usr/lib/command-not-found ]; then
-           /usr/bin/python /usr/lib/command-not-found -- $1
+           /usr/bin/python /usr/lib/command-not-found -- "$1"
            return $?
         elif [ -x /usr/share/command-not-found ]; then
-           /usr/bin/python /usr/share/command-not-found -- $1
+           /usr/bin/python /usr/share/command-not-found -- "$1"
            return $?
         else
            return 127
@@ -80,9 +88,10 @@ if [ -x /usr/lib/command-not-found -o -x /usr/share/command-not-found ]; then
 fi
 
 # Enable cj's bash extras. (prompts, colors, etc.)
-extrasfile="$cjhome/bash.extras.interactive.sh"
-if [[ -f "$extrasfile" ]]; then
-    source "$extrasfile"
-#else
-#    echo "Bash extras not found: $extrasfile"
+active_extras_name="bash.extras.interactive.sh"
+active_extras_path="$cjhome/$active_extras_name"
+if [[ -f "$active_extras_path" ]]; then
+    source "$active_extras_path"
+elif [[ -f "$HOME/$active_extras_name" ]]; then
+	source "$HOME/$active_extras_name"
 fi

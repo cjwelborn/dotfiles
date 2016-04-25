@@ -9,9 +9,9 @@
 #         No tabs before definitons.
 #         Seperate lines for curly braces.
 #         Use 1 tab depth for start of code block in functions.
-#         Function description is first comment in code block. 
+#         Function description is first comment in code block.
 #         Alias description is comment right side of alias definition.
-#         
+#
 #     ...if you use a different style it may or may not
 #        break the program and I can't help you.
 
@@ -24,24 +24,24 @@ alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias colr="python3 -m colr" # Shortcut to python3 -m colr.
-alias ftpweb="sftp welbornp@welbornproductions.net" # opens sftp shell for welbornproductions.net
+alias greenv="green -vv" # Run green with -vv for more verbosity.
 alias grep="grep -E --color=always" # use colors and regex for grep always
 alias howdoi="howdoi -c" # use colors for howdoi.
 alias idledev="pythondev \$Clones/cpython/Lib/idlelib/idle.py" # Start the cpython dev version Idle
 alias kdelogout="qdbus org.kde.ksmserver /KSMServer logout 0 0 2" # logout command for KDE...
 alias l="ls -a --color --group-directories-first" # Shortcut for ls (also helpful for my broken keyboard)
-alias la="ls -Fa --color" # list all files in dir
+alias la="ls -Fa --color" # List all files in dir
 alias linuxversion="uname -a" # show current linux kernel info/version
-alias ll="ls -alh --group-directories-first --color" # long list dir
-alias ls="ls -a --color --group-directories-first" # list dir
-alias lt="tree -a --dirsfirst | less -W" # list dir using tree
-alias mkdir="mkdir -p" # prevents clobbering files
+alias ll="ls -alh --group-directories-first --color=always" # Long list dir
+alias ls="ls -a --color=always --group-directories-first" # List dir
+alias lt="tree -a -C --dirsfirst | more -s" # List dir using tree
+alias mkdir="mkdir -p" # Prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
 alias npminstall="npm install --prefix=\$HOME" # Use npm install with a prefix set to $HOME
 alias perlmods="cpan -l | sort" # List all installed perl modules (shortcode for cpan -l)
 alias phpi="php5 -a" # Just a shortcut to php5 -a, thats all.
-alias pipsearch="sudo pip search" # search for pypi package by name
+alias pipsearch="pip search" # Search for pypi package by name
 alias profilepy3="python3 -m cProfile" # Profile a python 3 script using cProfile
 alias profilepy="python -m cProfile" # Profile a python script using cProfile
 alias profilepypy="pypy -m cProfile" # Profile a pypy script using cProfile
@@ -51,11 +51,12 @@ alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.ht
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io" # SSH into koding.com vm (with XForwarding)
 alias temp="which sensors &>/dev/null && sensors -f" # Show temperature for machines with 'sensors' installed.
 alias tmux="tmux -2" # Use 256 colors with tmux.
-alias treed="tree -d | less" # shows directory tree, directories only...
+alias treed="tree -C -d | more -s" # Shows directory tree, directories only...
 alias twistedconsole="python -m twisted.conch.stdio" # Runs twisted console (reactor already running)
 alias ubuntuversion="lsb_release -a" # shows current ubuntu distro version/codename
+alias wpdb="psql welbornprod_db" # Opens a Postgres shell for welbornprod_db.
 alias wpsftp="sftp cjwelborn@cjwelborn.webfactional.com" # Opens SFTP session for welbornprod.com
-alias xmsg="xmessage -center" # display an X windows message on the desktop
+alias wpssh="ssh -X cjwelborn@cjwelborn.webfactional.com" # Opens SSH session on welbornprod.com
 
 # Functions:
 function addrequirement()
@@ -66,43 +67,43 @@ function addrequirement()
 	    echo "       addrequirement <Package> <Version>"
 	    return 1
 	fi
-	
+
 	if [[ -f requirements.txt ]]; then
 		local addedstr="$1"
 		if [[ -z "$2" ]]; then
 			echo "$1" >> requirements.txt
 		else
-			addedstr="$1=$2"
+			addedstr="$1==$2"
 			echo "${addedstr}" >> requirements.txt
 		fi
 		if [[ "$?" == "0" ]]; then
 			echo "Added '${addedstr}' to requirements.txt"
-		else
-			echo "Unable to add '${addedstr}' to requirements.txt"
+			return 0
 		fi
-	else
-		echo "This will create a requirements.txt in: $PWD"
-		local answer=""
-		read -p "Do you want to continue? (y/N): " answer
-		if [[ -z "$answer" ]]; then
-			printf "\nCancelled requirements.txt creation.\n"
-			return 1
-		else
-			if [[ "${answer}" =~ ^[Yy] ]]; then
-				if touch requirements.txt; then
-					echo "Created: requirements.txt"
-					addrequirement "$@"
-					return 0
-				else
-					printf "\nUnable to create requirements.txt!\n"
-					return 1
-				fi
-			else
-				printf "\nCancelled requirements.txt creation.\n"
-				return 1
-			fi
-		fi
+		echo "Unable to add '${addedstr}' to requirements.txt"
+		return 1
 	fi
+	# Create a requirements.txt and run again.
+	echo "This will create a requirements.txt in: $PWD"
+	local answer=""
+	read -p "Do you want to continue? (y/N): " answer
+	if [[ -z "$answer" ]]; then
+		printf "\nCancelled requirements.txt creation.\n"
+		return 1
+	fi
+	if [[ "${answer}" =~ ^[Yy] ]]; then
+		if touch requirements.txt; then
+			echo "Created: requirements.txt"
+			addrequirement "$@"
+			return 0
+		fi
+		printf "\nUnable to create requirements.txt!\n"
+		return 1
+
+	fi
+	printf "\nCancelled requirements.txt creation.\n"
+	return 1
+
 }
 
 function apache()
@@ -119,6 +120,7 @@ function apache()
 function apachelog()
 {
 	# views apache2 logs (error.log by default)
+	# shellcheck disable=SC2154
 	if [[ -n "$Logs" ]]; then
 		local logdir=$Logs
 		local logname="${1:-error}_wp_${2:-site}.log"
@@ -127,7 +129,7 @@ function apachelog()
 		local logname="${1:-error}.log"
 	fi
 	local logfile="$logdir/$logname"
-	echo "opening apache log: $logfile"
+	echo "Opening apache log: $logfile"
 	cat "$logfile"
 }
 
@@ -148,7 +150,7 @@ function argclinic()
 	    echo "usage: argclinic <file.c>"
 	    return
 	fi
-	
+	# shellcheck disable=SC2154
 	python3 "$Clones/cpython/Tools/clinic/clinic.py" "$@"
 }
 
@@ -173,26 +175,6 @@ function ask()
 	esac
 }
 
-function b64decode()
-{
-	# decode base64 string
-	if [[ -z "$1" ]]; then
-		echo "Usage: b64decode QWxpYXMgTWFuYWdlcgo="
-	else
-		base64 -d <<<"$1"
-	fi
-}
-
-function b64encode()
-{
-	# encode a base64 string
-	if [[ -z "$1" ]]; then
-		echo "Usage: b64encode whattoencode"
-	else
-		base64 <<<"$@"
-	fi
-}
-
 function camrecord()
 {
 	# record an uncrompressed avi with webcam
@@ -211,7 +193,7 @@ function cdgodir()
 		echo "see: godir --help"
 		return 1
 	fi
-	
+
 	local godirname
 	godirname="$(godir "$1")"
 	if (( $? == 0 )); then
@@ -219,7 +201,7 @@ function cdgodir()
 		return 0
 	fi
 	return 1
-	
+
 }
 
 function cdsym()
@@ -237,6 +219,7 @@ function echo_failure()
 	local colnumber=71
 	# move to position
 	echo -en "\\033[${colnumber}G"
+	# shellcheck disable=SC2154
 	echo -en "$red"
 	echo -n '['
 	echo -en "$RED"
@@ -249,16 +232,17 @@ function echo_success()
 {
 	# print a green 'SUCCESS' msg about 71 columns in
 	# all of these were inspired by Fedora's (i think) init.d/functions"
-	
+
 	# move to position
 	echo -en "\\033[${colnumber}G"
+	# shellcheck disable=SC2154
 	echo -en "$green"
 	echo -n '['
 	echo -en "$LIGHTGREEN"
 	echo -n 'SUCCESS'
 	echo -en "$green"
 	echo ']'
-	
+
 }
 
 function echo_warning()
@@ -268,6 +252,7 @@ function echo_warning()
 	local colnumber=71
 	# move to position
 	echo -en "\\033[${colnumber}G"
+	# shellcheck disable=SC2154
 	echo -en "$lightyellow"
 	echo -n '['
 	echo -en "$YELLOW"
@@ -334,7 +319,7 @@ function kd()
 		pwd -P
 		ls -a --group-directories-first --color=auto
 	fi
-	
+
 }
 
 function mkdircd()
@@ -359,15 +344,15 @@ function move_to_col()
 function my_ip()
 {
 	# set MY_IP variable
-	MY_IP=$(/sbin/ifconfig wlan0 | awk '/inet/ { print $2 } ' | \
+	MY_IP=$(/sbin/ifconfig w0 | awk '/inet/ { print $2 } ' | \
 	sed -e s/addr://)
-	MY_ISP=$(/sbin/ifconfig wlan0 | awk '/P-t-P/ { print $3 } ' | \
+	MY_ISP=$(/sbin/ifconfig w0 | awk '/P-t-P/ { print $3 } ' | \
 	sed -e s/P-t-P://)
 	echo " ip: ${MY_IP}"
 	if [[ -n "$MY_ISP" ]]; then
 		echo "isp: ${MY_ISP}"
 	fi
-	
+
 }
 
 function pip3install()
@@ -380,7 +365,7 @@ function pip3install()
 		echo "    pipargs      : Send any arguments to pip."
 		return
 	fi
-	
+
 	if [[ -z "$2" ]]; then
 		# Install the package under user by default.
 		pip3 install "$@" --user
@@ -400,7 +385,7 @@ function pipall()
 		echo "Usage: pipall [pip args]"
 		return
 	fi
-	
+
 	pips=("pip" "pip3" "pip-pypy")
 	for pipcmd in "${pips[@]}"
 	do
@@ -422,7 +407,7 @@ function pipinstall()
 		echo "    pipargs      : Send any arguments to pip."
 		return
 	fi
-	
+
 	if [[ -z "$2" ]]; then
 		# Install the package under user by default.
 		pip install "$@" --user
@@ -442,7 +427,7 @@ function pipinstallall()
 		echo "Usage: pipallinstall <packagename>"
 		return
 	fi
-	
+
 	pips=("pip" "pip3" "pip-pypy")
 	for pipcmd in "${pips[@]}"
 	do
@@ -452,7 +437,7 @@ function pipinstallall()
 			return
 		fi
 	done
-	
+
 }
 
 function portscan()
@@ -485,8 +470,8 @@ function print_status()
 	local statustype="${1:-success}"
 	# no message will just print the status marker.
 	local statusmsg="${2:- }"
-	
-	
+
+
 	# display msg using print_ functions...
 	case $statustype in
 		"success"|"ok"|"s"|"-")
@@ -524,7 +509,7 @@ function pscores()
 		echo "Usage: pscores <pid>"
 		return
 	fi
-	
+
 	ps -p "$1" -L -o command,pid,tid,psr,pcpu
 }
 
@@ -535,7 +520,7 @@ function pscoresname()
 		echo "Usage: pscoresname <name>"
 		return
 	fi
-	
+
 	pname="$(pidname "$1" --pidonly)"
 	ps -p "$pname" -L -o command,pid,tid,psr,pcpu
 }
@@ -548,28 +533,28 @@ function psmemory()
 	    echo "    * <process> can be a name, or pid."
 	    return
 	fi
-	
+
 	if ! cmdexists pidname; then
 	    echo "This command requires 'pidname' to be installed!"
 	    return
 	fi
-	
+
 	local pid
 	    pid=$(pidname "$1" -p)
 	if [[ -z "$pid" ]]; then
 	    echo "Unable to find a command with: $1"
 	    return
 	fi
-	
+
 	printf "\nps memory usage:\n"
 	ps -v -p "$pid"
-	
+
 	if ps -v --ppid "$pid" 1>/dev/null; then
 	    printf "\nchild memory usage:\n"
 	    ps -v --ppid "$pid"
 	fi
-	
-	
+
+
 }
 
 function pssearch()
@@ -581,14 +566,14 @@ function pssearch()
 	    echo "       * any arguments are passed to grep."
 		return
 	fi
-	
+
 	# Show ps header
 	ps aux | head -n1
-	
+
 	# Show ps | grep info. (filter grep process out)
 	# shellcheck disable=SC2009
 	ps aux | grep "$@" | grep -v "grep"
-	
+
 }
 
 function pylite()
@@ -626,7 +611,7 @@ function showmyip()
 	# shows current IP address
 	echo "Gathering IP Address..."
 	# Setting a global here on purpose.
-	MY_IP="$(/sbin/ifconfig wlan0 | awk '/inet/ { print $2 } ' | \
+	MY_IP="$(/sbin/ifconfig w0 | awk '/inet/ { print $2 } ' | \
 	sed -e s/addr://)"
 	echo " ip: $MY_IP"
 }
@@ -639,12 +624,12 @@ function spanishword()
 		echo "Usage: spanish <word_to_translate>"
 		return 1
 	fi
-	
+
 	# More help with -h or --help.
 	if [[ "$1" =~ ^(-h)|(--help)$ ]]; then
 	    echo "
 	Usage: spanish <word_to_translate>
-	
+
 	This command is highly dependant on spanish.dictionary.com's
 	layout. If that layout ever changes this command may return
 	gibberish. If that happens, you can either edit the command,
@@ -652,10 +637,10 @@ function spanishword()
 	"
 	    return 1
 	fi
-	
+
 	# Dump the spanish translation page with lynx
 	lynx -dump -nonumbers -width=160 "http://spanish.dictionary.com/definition/$1?src=en" | grep "$1 / "
-	
+
 }
 
 function sshver()
@@ -672,7 +657,7 @@ function switchroot()
 	defaultname="wheezy_raspbian" # the only chroot setup right now.
 	usingname=""
 	chrootargs=""
-	
+
 	if [[ -z "$1" ]]; then
 		echo "Using default chroot: ${defaultname}"
 		usingname=$defaultname
@@ -692,8 +677,8 @@ function switchroot()
 		# name was passed, trim the rest of the args.
 	        chrootargs=("${args[@]:1}")
 	    fi
-	
-	
+
+
 	if (( ${#chrootargs[@]} == 0 )); then
 	    echo "Opening chroot $usingname..."
 	    schroot -c "$usingname"
@@ -701,8 +686,8 @@ function switchroot()
 	    echo "Opening chroot $usingname with args: ${chrootargs[*]}"
 	    schroot -c "$usingname" "${chrootargs[@]}"
 	fi
-	
-	
+
+
 }
 
 function symlink()
@@ -728,6 +713,7 @@ function sysversions()
 	lsb_release -a
 	echo -e "\nLinux/Kernel Information:"
 	uname -a
+	stat --printf "\nBirth day:\n    %y\n" /lost+found
 }
 
 function tarlist()
@@ -738,7 +724,7 @@ function tarlist()
 		return 1
 	fi
 	tar -tvf "$@"
-	
+
 }
 
 function weatherday()
@@ -771,12 +757,13 @@ function wmswitch()
 		echo " Like: wmswitch lightdm"
 		return 1
 	fi
-	
+
 	sudo dpkg-reconfigure "$1"
 }
 
 function wpcd()
 {
+	# shellcheck disable=SC2154
 	# cd to wp development dir if needed.
 	if [[ "$PWD" != "$Wp" ]]; then
 	    echo "Moving to wp development dir: $Wp"
@@ -796,7 +783,7 @@ function wpmemory()
 	# Shows processes and memory usage for apache.
 	# shellcheck disable=SC2009
 	ps aux | head -n1 && ps aux | grep 'www-data' | grep -v 'grep'
-	
+
 }
 
 function wpprofile()
@@ -809,8 +796,8 @@ function wpprofile()
 	    echo "Creating dir ~/dump/wp-profile"
 		mkdir /home/cj/dump/wp-profile
 	fi
-	
-	
+
+
 	wpcd
 	echo "Starting server..."
 	./manage runprofileserver --kcachegrind "--prof-path=/home/cj/dump/wp-profile" "127.0.0.1:8080"
@@ -823,7 +810,7 @@ function ziplist()
 	    echo "Usage: ziplist <filename.zip>"
 	    return 1
 	fi
-	
+
 	unzip -l "$@"
 }
 
@@ -835,8 +822,6 @@ export aptinstall
 export argclinic
 export asciimovie
 export ask
-export b64decode
-export b64encode
 export camrecord
 export cdgodir
 export cdsym
@@ -882,4 +867,3 @@ export wpfcgi
 export wpmemory
 export wpprofile
 export ziplist
-

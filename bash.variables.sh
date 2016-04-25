@@ -31,9 +31,9 @@ export Rustprojects="$Scripts/rust"
 export Rustprojs="$Rustprojects"
 
 # Project locations
-export Work="$Home/workspace"
+export Work=$Scripts
 export Cedit="$Work/cedit/cedit"
-export Clones="$Work/clones"
+export Clones="$Home/clones"
 export Cram="$Work/cram/cram_site"
 export Menuprops="$Work/eclipse/menuprops"
 export Pyval="$Work/pyval"
@@ -51,9 +51,9 @@ export Cpython="$Clones/cpython"
 export Dl="$Home/Downloads"
 export Installers="$Dl/installers"
 export Homebin="$Home/.local/bin"
-export Music="$Mp3/mp3"
+export Music="$Home/Music"
 export Pictures="$Home/Pictures"
-export Pics="$Pictures"
+export Pics=$Pictures
 export Screenshots="$Pictures/screenshots"
 export Videos="$Home/Videos"
 export Docs="$Home/Documents"
@@ -69,6 +69,12 @@ export Py3homepkgs="$Home/.local/lib/python3.4/site-packages"
 export Py3userpkgs="$Py3homepkgs"
 export Py3pkgs="/usr/local/lib/python3.4/dist-packages"
 export Py3mainpkgs="/usr/lib/python3.4/"
+
+# KDE ServiceMenu directories
+export Servicemenus_local_old="$Home/.kde/share/kde4/services/ServiceMenus/"
+export Servicemenus_global_old="/usr/share/kde4/services/ServiceMenus/"
+export Servicemenus_local="$Home/.local/share/kservices5/ServiceMenus/"
+export Servicemenus_global="/usr/share/kservices5/ServiceMenus/"
 
 # Theme dirs
 export Winthemes="$Home/.kde/share/apps"

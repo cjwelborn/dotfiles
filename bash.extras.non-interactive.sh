@@ -24,23 +24,23 @@ function _echo {
     fi
 }
 
-if [[ -d /home/cjwelborn ]]; then
-    cjhome='/home/cjwelborn'
+if [[ -d "/home/cjwelborn" ]]; then
+    # Remote
+    cjhome="/home/cjwelborn"
+elif [[ -d "/home/cj" ]]; then
+    # Local
+    cjhome="/home/cj"
+elif [[ -n "$HOME" ]] && [[ -d "$HOME" ]]; then
+    # Not one of my main machines.
+    cjhome=$HOME
+elif [[ -n "$USER" ]] && [[ -d "/home/$USER" ]]; then
+    # It would be weird to have USER and no HOME, but whatever.
+    cjhome="/home/$USER"
 else
-    if [[ -d "/home/cj" ]]; then
-        cjhome="/home/cj"
-    else
-        # Not one of my main machines.
-        if [[ -n "$HOME" ]] && [[ -d "$HOME" ]]; then
-            cjhome=$HOME
-        elif [[ -n "$USER" ]] && [[ -d "/home/$USER" ]]; then
-            cjhome="/home/$USER"
-        else
-            _echo "Cannot find a suitable /home directory!"
-            cjhome="/root"
-        fi
-    fi
+    _echo "Cannot find a suitable /home directory!"
+    cjhome="/root"
 fi
+
 
 # Get Cj's Variables first, so they are available in other scripts.
 variablefile="$cjhome/bash.variables.sh"
@@ -79,13 +79,28 @@ if [[ -d "$cjhome/.nvm" ]]; then
     shopt -s nullglob
     nvmversions=("$cjhome"/.nvm/versions/*/*)
     if (( ${#nvmversions[@]} > 0 )); then
-        for _nvm_verdir in "${nvmversions[@]}"; do
-            _nvm_verbindir="${_nvm_verdir}/bin"
-            if [[ -d "${_nvm_verbindir}" ]]; then
-                export PATH="$PATH:${_nvm_verbindir}"
+        for node_ver_dir in "${nvmversions[@]}"; do
+            node_bin_dir="${node_ver_dir}/bin"
+            if [[ -d "${node_bin_dir}" ]]; then
+                # Add this version of node's /bin directory for executables.
+                export PATH="$PATH:${node_bin_dir}"
+            fi
+            node_modules_dir="${node_ver_dir}/lib/node_modules"
+            if [[ -d "${node_modules_dir}" ]]; then
+                # Add /node_modules to node's path, so they are require()able.
+                if [[ -z "$NODE_PATH" ]]; then
+                    # First path added, no colon needed.
+                    export NODE_PATH=$node_modules_dir
+                else
+                    export NODE_PATH="$NODE_PATH:${node_modules_dir}"
+                fi
             fi
         done
+        # These shouldn't be available after init.
+        unset node_bin_dir node_modules_dir
     fi
+    # Nvm node versions array isn't needed after init.
+    unset nvmversions
     shopt -u nullglob
 fi
 
@@ -110,8 +125,8 @@ else
 fi
 
 # Rust source path for racer.
-if [[ -d $cjhome/workspace/clones/rust/src ]] && [[ -z "$RUST_SRC_PATH" ]]; then
-    export RUST_SRC_PATH=$cjhome/workspace/clones/rust/src
+if [[ -d $cjhome/clones/rust/src ]] && [[ -z "$RUST_SRC_PATH" ]]; then
+    export RUST_SRC_PATH=$cjhome/clones/rust/src
 fi
 
 # Options for Scratchbox (cross-compilation setup for raspberry-pi)

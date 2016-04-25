@@ -8,17 +8,19 @@
 # ---------------------------------- COLORS ----------------------------------
 if [[ -d "/home/cjwelborn" ]]; then
     cjhome="/home/cjwelborn"
-else
+elif [[ -d "/home/cj" ]]; then
     cjhome="/home/cj"
+elif [[ -d "$HOME" ]]; then
+    cjhome=$HOME
+elif [[ -n "$USER" ]] && [[ -d "/home/$USER" ]]; then
+    cjhome="/home/$USER"
+else
+    cjhome="/root"
 fi
 
 # Log some debug info while loading this script.
 if [[ -w "$cjhome" ]]; then
   bashextraslogfile="$cjhome/bash.extras.interactive.log"
-elif [[ -w "$HOME" ]]; then
-  bashextraslogfile="$HOME/bash.extras.interactive.log"
-elif [[ -w "/home/$USER" ]]; then
-  bashextraslogfile="/home/$USER/bash.extras.interactive.log"
 else
   _echo &>/dev/null && _echo "No log file to write to."
 fi

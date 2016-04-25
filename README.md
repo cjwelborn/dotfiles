@@ -5,19 +5,21 @@ to do that.
 Included Files:
 ---------
 
-
-* `bash.variables.sh`:
-    Exported variables, like frequently used dirs. No changes to the existing
-    environment are made here.
-
 * `bash.alias.sh`:
     Exported aliases and functions. One-liners, complex functions, etc.
+
+* `bash.bashrc`:
+    Main bash file, which includes these files. It also uses `fortune`,
+    `todo`, and some other header apps if they are available.
+
+* `bash.extras.interactive.sh`:
+    Environment modifications that should only run in interactive mode.
+    Like prompt changes, BASH welcome messages, etc.
 
 * `bash.extras.non-interactive.sh`:
     Environment modifications that should always run.
     Like PATH modifications, BASH options, keyboard layout settings.
 
-
-* `bash.extras.interactive.sh`:
-    Environment modifications that should only run in interactive mode.
-    Like prompt changes, BASH welcome messages, etc.
+* `bash.variables.sh`:
+    Exported variables, like frequently used dirs. No changes to the existing
+    environment are made here.

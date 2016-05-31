@@ -23,3 +23,6 @@ Included Files:
 * `bash.variables.sh`:
     Exported variables, like frequently used dirs. No changes to the existing
     environment are made here.
+
+* `./fresh-install/fresh-install.sh`:
+    An install script for my new/fresh-installed machines.

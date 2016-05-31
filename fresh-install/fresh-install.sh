@@ -169,16 +169,20 @@ function print_usage {
     echo "$appname v. $appversion
 
     Usage:
-        $appscript -h | -l | -p2 | -p3 | -v
+        $appscript -h | -l | -l2 | -l3 | -v
+        $appscript [-a] [-p2] [-p3]
 
     Options:
+        -a,--apt        : Install apt packages.
         -h,--help       : Show this message.
         -l,--list       : List installed packages on this machine.
                           Used to build this/other install scripts.
-        -p2,--listpip2  : List installed pip 2.7 packages on this machine.
+        -l2,--listpip2  : List installed pip 2.7 packages on this machine.
                           Used to build this/other install scripts.
-        -p3,--listpip3  : List installed pip 3 packages on this machine.
+        -l3,--listpip3  : List installed pip 3 packages on this machine.
                           Used to build this/other install scripts.
+        -p2,--pip2      : Install pip2 packages.
+        -p3,--pip3      : Install pip3 packages.
         -v,--version    : Show $appname version and exit.
     "
 }
@@ -201,8 +205,17 @@ check_required_files || exit 1
 
 declare -a nonflags
 dry_run=0
+do_all=1
+do_apt=0
+do_pip2=0
+do_pip3=0
+
 for arg; do
     case "$arg" in
+        "-a"|"--apt" )
+            do_apt=1
+            do_all=0
+            ;;
         "-d"|"--dryrun" )
             dry_run=1
             ;;
@@ -214,13 +227,21 @@ for arg; do
             list_packages
             exit
             ;;
-        "-p2"|"--listpip2" )
+        "-l2"|"--listpip2" )
             list_pip "2"
             exit
             ;;
-        "-p3"|"--listpip3" )
+        "-l3"|"--listpip3" )
             list_pip "3"
             exit
+            ;;
+        "-p2"|"--pip2" )
+            do_pip2=1
+            do_all=0
+            ;;
+        "-p3"|"--pip3" )
+            do_pip3=1
+            do_all=0
             ;;
         "-v"|"--version" )
             echo -e "$appname v. $appversion\n"
@@ -234,6 +255,6 @@ for arg; do
     esac
 done
 
-run_cmd "$(generate_apt_cmd)" "Installing apt packages..."
-run_cmd "$(generate_pip_cmd 2)" "Installing pip2 packages..."
-run_cmd "$(generate_pip_cmd 3)" "Installing pip3 packages..."
+((do_all || do_apt)) && run_cmd "$(generate_apt_cmd)" "Installing apt packages..."
+((do_all || do_pip2)) && run_cmd "$(generate_pip_cmd 2)" "Installing pip2 packages..."
+((do_all || do_pip3)) && run_cmd "$(generate_pip_cmd 3)" "Installing pip3 packages..."

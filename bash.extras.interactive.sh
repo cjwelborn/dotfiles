@@ -5,7 +5,6 @@
 #   source bash.extras.interactive.sh
 # -Christopher Welborn 8-9-13 (not all pieces are original work)
 
-# ---------------------------------- COLORS ----------------------------------
 if [[ -d "/home/cjwelborn" ]]; then
     cjhome="/home/cjwelborn"
 elif [[ -d "/home/cj" ]]; then
@@ -39,6 +38,7 @@ if [[ -e "$dircolorsfile" ]]; then
 fi
 unset -v dircolorsfile
 
+# ---------------------------------- COLORS ----------------------------------
 # Define some colors first: (SC2034 = Unused vars (they are exported though))
             red='\e[0;31m'     # shellcheck disable=SC2034
       redprompt='\[e[0;31m\]'
@@ -268,6 +268,12 @@ else
     echo ""
     todo
 fi
+
+# Setup lesspipe, so the `less` command can handle other file types.
+# Another option is to use '$(lessfile)', which processes the entire file
+# before displaying it. `lesspipe` views the file DURING processing, using
+# pipes. -Cj
+eval "$(lesspipe)"
 
 # Welcome message.
 welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"

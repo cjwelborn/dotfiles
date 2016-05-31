@@ -50,29 +50,61 @@ else
     _echo "Variables file not found: $variablefile"
 fi
 
-# Use cj's .local bin for everyone
-if [[ -d $cjhome/.local/bin ]]; then
+# Basic environment variables.
+if which cedit &>/dev/null; then
+    # Use whatever my favorite editor is set to.
+    export EDITOR="cedit"
+elif which vim &>/dev/null; then
+    export EDITOR="vim"
+elif which nano &>/dev/null; then
+    # If worse comes to worse...
+    export EDITOR="nano"
+fi
+# Use cj's .local bin for everyone with permissions.
+if [[ -d $cjhome/.local/bin ]] && [[ -x $cjhome/.local/bin ]]; then
     export PATH=$cjhome/.local/bin:$PATH
 fi
 
-if [[ -d $cjhome/bin ]]; then
+if [[ -d $cjhome/bin ]] &&  [[ -x $cjhome/bin ]]; then
     export PATH=$cjhome/bin:$PATH
 fi
 
 # Paths for go language.
-#export GOROOT=/usr/bin
-if [[ -d $cjhome/gocode ]]; then
+if [[ -d $cjhome/gocode ]] && [[ -x $cjhome/gocode ]]; then
     export GOPATH=$cjhome/gocode
     export PATH=$PATH:$GOPATH/bin
 fi
 
 # Paths for node.js executables.
-if [[ -d $cjhome/node_modules/.bin ]]; then
+if [[ -d $cjhome/node_modules/.bin ]] && [[ -x $cjhome/node_modules/.bin ]]; then
     export PATH="$PATH:$cjhome/node_modules/.bin"
 fi
 
+# Cargo installed binaries.
+# /home/cj/.multirust/toolchains/nightly/cargo/bin
+if [[ -d "$cjhome/.multirust/toolchains" ]] && [[ -x "$cjhome/.multirust/toolchains" ]]; then
+    export MULTIRUST_TOOLCHAIN_DIR="$cjhome/.multirust/toolchains"
+    shopt -s nullglob
+    # Get all multirust toolchain dirs.
+    multirust_dirs=("$MULTIRUST_TOOLCHAIN_DIR"/*)
+    if (( ${#multirust_dirs[@]} > 0 )); then
+        for multirust_dir in "${multirust_dirs[@]}"; do
+            multirust_bin_dir="$multirust_dir/cargo/bin"
+            if [[ -d "$multirust_bin_dir" ]]; then
+                # Add this multirust toolchain's bin dir to PATH.
+                export PATH="$PATH:${multirust_bin_dir}"
+            fi
+        done
+        # Shouldn't be available after init.
+        unset multirust_dir multirust_bin_dir
+    fi
+    # These shouldn't be available after init.
+    unset multirust_dirs
+    shopt -u nullglob
+fi
+
 # Node version manager.
-if [[ -d "$cjhome/.nvm" ]]; then
+if [[ -d "$cjhome/.nvm" ]] && [[ -x "$cjhome/.nvm" ]]; then
     export NVM_DIR="$cjhome/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
     # Add all node version's bin directories to path.
@@ -107,12 +139,12 @@ fi
 # Install path for ruby gems.
 export GEM_HOME=$cjhome/gems
 # Paths for ruby/gem executables.
-if [[ -d $cjhome/gems/bin ]]; then
+if [[ -d $cjhome/gems/bin ]] && [[ -x $cjhome/gems/bin ]]; then
     export PATH="$PATH:$cjhome/gems/bin"
 fi
 
 # Executables for Haskell/Cabal
-if [[ -d $cjhome/.cabal/bin ]]; then
+if [[ -d $cjhome/.cabal/bin ]] && [[ -x $cjhome/.cabal/bin ]]; then
     export PATH=$PATH:$cjhome/.cabal/bin
 fi
 

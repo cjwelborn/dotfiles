@@ -24,6 +24,7 @@ alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias colr="python3 -m colr" # Shortcut to python3 -m colr.
+alias exal="exa -abghHliS" # Run exa with a long, detailed view.
 alias greenv="green -vv" # Run green with -vv for more verbosity.
 alias grep="grep -E --color=always" # use colors and regex for grep always
 alias howdoi="howdoi -c" # use colors for howdoi.
@@ -48,6 +49,7 @@ alias profilepypy="pypy -m cProfile" # Profile a pypy script using cProfile
 alias profilestackless="stackless -m cProfile" # Profile a stackless script using cProfile
 alias pwd="pwd -P" # show actual directory (not symlink)
 alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.html"' # Views the documentation pages for PyKDE using chrome.
+alias servers="sudo netstat -ltupn" # Show all listening servers on this machine.
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io" # SSH into koding.com vm (with XForwarding)
 alias temp="which sensors &>/dev/null && sensors -f" # Show temperature for machines with 'sensors' installed.
 alias tmux="tmux -2" # Use 256 colors with tmux.

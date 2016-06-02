@@ -2,6 +2,10 @@
 
 # My install script, that installs packages that I use frequently.
 # -Christopher Welborn 05-31-2016
+
+# TODO: clone github.com/cjwelborn/cj-config and cj-dotfiles, copy to machine.
+shopt -s nullglob
+
 appname="fresh-install"
 appversion="0.0.1"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
@@ -13,8 +17,12 @@ filename_pip2_pkgs="$appdir/fresh-install-pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/fresh-install-pip3-pkgs.txt"
 required_files=("$filename_pkgs" "$filename_pip2_pkgs" "$filename_pip3_pkgs")
 
+# This can be set with the --debug flag.
+debug_mode=0
+
 function check_required_files {
     # Check for at least one required file before continuing.
+    debug "Checking for required package list files."
     required_cnt=0
     for requiredfile in "${required_files[@]}"; do
         [[ -e "$requiredfile" ]] && let required_cnt+=1
@@ -31,6 +39,11 @@ function check_required_files {
         echo_err "...some packages may not be installed."
     fi
     return 0
+}
+
+function debug {
+    # Echo a debug message to stderr if debug_mode is set.
+    if ((debug_mode)); then echo_err "$@"; fi
 }
 
 function echo_err {
@@ -50,7 +63,7 @@ function fail_usage {
     exit 1
 }
 
-function generate_apt_cmd {
+function generate_apt_cmds {
     # Generate an apt-get install command to install packages from
     # fresh-install-pkgs.txt
     if [[ ! -e "$filename_pkgs" ]]; then
@@ -59,10 +72,10 @@ function generate_apt_cmd {
     fi
     local pkgs
     mapfile -t pkgs < "$filename_pkgs"
-    printf "sudo apt-get install %s" "$(printf "%s " "${pkgs[@]}")"
+    printf "sudo apt-get -y --ignore-missing install %s;\n" "${pkgs[@]}"
 }
 
-function generate_pip_cmd {
+function generate_pip_cmds {
     # Generate a pip install comand to install packages from
     # fresh-install-pip$1.txt
     local ver="${1:-3}"
@@ -71,6 +84,9 @@ function generate_pip_cmd {
     if [[ ! -e "$filename" ]]; then
         echo_err "Cannot install pip${ver} packages, missing ${filename}."
         return 1
+    elif ! which "pip${ver}" &>/dev/null; then
+        echo_err "Cannot find pip${ver} executable!"
+        return 1
     fi
     declare -a sudopkgs
     declare -a normalpkgs
@@ -78,7 +94,10 @@ function generate_pip_cmd {
     local normalpkgs
     local pkgname
     local sudopat='^\*'
+    local commentpat='^[ \t]+?#'
     while IFS=$'\n' read -r pkgname; do
+        # Ignore comment lines.
+        [[ "$pkgname" =~ $commentpat ]] && continue
         if [[ "$pkgname" =~ $sudopat ]]; then
             sudopkgs=("${sudopkgs[@]}" "${pkgname:1}")
         else
@@ -92,19 +111,21 @@ function generate_pip_cmd {
     local finalcmd=""
     if ((${#sudopkgs[@]})); then
         local sudocmd
-        sudocmd="sudo pip${ver} install $(printf "%s " "${sudopkgs[@]}")"
-        finalcmd="$sudocmd;"
+        finalcmd="# Python $ver GLOBAL pip command:"$'\n'
+        sudocmd="$(printf "sudo pip${ver} install %s;\n" "${sudopkgs[@]}")"
+        finalcmd="${finalcmd}${sudocmd};"$'\n'
     fi
     if ((${#normalpkgs[@]})); then
         local normalcmd
-        normalcmd="pip${ver} install $(printf "%s " "${normalpkgs[@]}")"
-        finalcmd="${finalcmd}$normalcmd"
+        finalcmd="${finalcmd}"$'\n'"# Python $ver LOCAL pip command:"$'\n'
+        normalcmd="$(printf "pip${ver} install %s;\n" "${normalpkgs[@]}")"
+        finalcmd="${finalcmd}${normalcmd}"
     fi
     if [[ -z "$finalcmd" ]]; then
         echo_err "No pip${ver} packages to install."
         return 1
     fi
-    printf "%s" "$finalcmd"
+    echo "$finalcmd"
 }
 
 function is_system_pip {
@@ -113,14 +134,15 @@ function is_system_pip {
     local ver="${1:-3}"
     local pkg=$2
     [[ -n "$pkg" ]] || fail "Expected a package name for is_system_pip!"
-    local pkgdirs=("/usr/lib" "/usr/local/lib")
-    for pkgdir in "${pkgdirs[@]}"; do
-        if ls -d "${pkgdir}/python${ver}"*"/dist-packages/${pkg}" &>/dev/null; then
-            return 0
-        elif ls "${pkgdir}/python${ver}"*"/dist-packages/${pkg}.py" &>/dev/null; then
-            return 0
-        fi
-    done
+    local pkgloc
+    if ! pkgloc="$(pip"$ver" show "$pkg" | grep Location | cut -d ' ' -f 2)"; then
+        # Assume errors are system packages.
+        return 0
+    fi
+    # Assume empty locations are system packages.
+    [[ -n "$pkgloc" ]] || return 0
+    # Package locations not starting with /home are considered system packages.
+    [[ "$pkgloc" =~ ^/home ]] || return 0
     return 1
 }
 
@@ -132,6 +154,7 @@ function list_packages {
         [[ -n "$blacklistpat" ]] && blacklistpat="${blacklistpat}|"
         blacklistpat="${blacklistpat}($pkgname)"
     done
+    debug "Gathering installed apt packages ( ignoring" "${blacklisted[@]}" ")."
     # shellcheck disable=SC2016
     # ...single-quotes are intentional.
     comm -13 \
@@ -152,8 +175,11 @@ function list_pip {
     else
         [[ -n "$exepath" ]] || fail "Failed to locate $exe"
     fi
+    debug "Listing pip${ver} packages..."
     local pkgname
+    echo "# Packages marked with * are global packages, and require sudo to install."
     for pkgname in $($exepath list | cut -d' ' -f1); do
+        debug "Checking for system/local package: $pkgname"
         if is_system_pip "$ver" "$pkgname"; then
             echo "*${pkgname}"
         else
@@ -169,11 +195,14 @@ function print_usage {
     echo "$appname v. $appversion
 
     Usage:
-        $appscript -h | -l | -l2 | -l3 | -v
-        $appscript [-a] [-p2] [-p3]
+        $appscript -h | -v
+        $appscript [-l] [-l2] [-l3] [-D]
+        $appscript [-a] [-p2] [-p3] [-D]
 
     Options:
         -a,--apt        : Install apt packages.
+        -D,--debug      : Print some debug info while running.
+        -d,--dryrun     : Don't do anything, just print the commands.
         -h,--help       : Show this message.
         -l,--list       : List installed packages on this machine.
                           Used to build this/other install scripts.
@@ -196,7 +225,7 @@ function run_cmd {
     if ((dry_run)); then
         echo "$cmd"
     else
-        $cmd
+        eval "$cmd"
     fi
 }
 
@@ -207,6 +236,9 @@ declare -a nonflags
 dry_run=0
 do_all=1
 do_apt=0
+do_list=0
+do_listpip2=0
+do_listpip3=0
 do_pip2=0
 do_pip3=0
 
@@ -219,21 +251,21 @@ for arg; do
         "-d"|"--dryrun" )
             dry_run=1
             ;;
+        "-D"|"--debug" )
+            debug_mode=1
+            ;;
         "-h"|"--help" )
             print_usage ""
             exit 0
             ;;
         "-l"|"--list" )
-            list_packages
-            exit
+            do_list=1
             ;;
         "-l2"|"--listpip2" )
-            list_pip "2"
-            exit
+            do_listpip2=1
             ;;
         "-l3"|"--listpip3" )
-            list_pip "3"
-            exit
+            do_listpip3=1
             ;;
         "-p2"|"--pip2" )
             do_pip2=1
@@ -255,10 +287,20 @@ for arg; do
     esac
 done
 
-if ((do_all || do_apt)); then
-    echo "Updating package list..."
-    sudo apt-get update || fail "Failed to update the packages list!"
-    run_cmd "$(generate_apt_cmd)" "Installing apt packages..."
+if ((do_list || do_listpip2 || do_listpip3)); then
+    ((do_list)) && list_packages
+    ((do_listpip2)) && list_pip "2"
+    ((do_listpip3)) && list_pip "3"
+    exit
 fi
-((do_all || do_pip2)) && run_cmd "$(generate_pip_cmd 2)" "Installing pip2 packages..."
-((do_all || do_pip3)) && run_cmd "$(generate_pip_cmd 3)" "Installing pip3 packages..."
+if ((do_all || do_apt)); then
+    run_cmd "sudo apt-get update" "Upgrading the packages list..."
+    run_cmd "$(generate_apt_cmds)" "Installing apt packages..."
+fi
+
+if ((do_all || do_pip2)); then
+    run_cmd "$(generate_pip_cmds 2)" "Installing pip2 packages..."
+fi
+if ((do_all || do_pip3)); then
+    run_cmd "$(generate_pip_cmds 3)" "Installing pip3 packages..."
+fi

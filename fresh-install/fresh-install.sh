@@ -255,6 +255,10 @@ for arg; do
     esac
 done
 
-((do_all || do_apt)) && run_cmd "$(generate_apt_cmd)" "Installing apt packages..."
+if ((do_all || do_apt)); then
+    echo "Updating package list..."
+    sudo apt-get update || fail "Failed to update the packages list!"
+    run_cmd "$(generate_apt_cmd)" "Installing apt packages..."
+fi
 ((do_all || do_pip2)) && run_cmd "$(generate_pip_cmd 2)" "Installing pip2 packages..."
 ((do_all || do_pip3)) && run_cmd "$(generate_pip_cmd 3)" "Installing pip3 packages..."

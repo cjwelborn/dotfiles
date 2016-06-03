@@ -421,7 +421,7 @@ function remove_file {
     shift
     # Temp files (with the appname in them) are still removed during dry runs.
     if ((dry_run)) && [[ ! "$file" =~ $appname ]]; then
-        debug_status "Remove $*" "$file"
+        debug_status "rm $*" "$file"
         return 0
     fi
 
@@ -439,7 +439,7 @@ function remove_file_sudo {
     shift
     # Temp files (with the appname in them) are still removed during dry runs.
     if ((dry_run)) && [[ ! "$file" =~ $appname ]]; then
-        debug_status "Remove $*" "$file"
+        debug_status "rm $*" "$file"
         return 0
     fi
     status "sudo rm $*" "$file"

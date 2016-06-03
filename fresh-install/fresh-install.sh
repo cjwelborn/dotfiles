@@ -2,7 +2,7 @@
 
 # My install script, that installs packages that I use frequently.
 # -Christopher Welborn 05-31-2016
-
+shopt -s dotglob
 shopt -s nullglob
 
 appname="fresh-install"
@@ -69,15 +69,18 @@ function copy_file {
     # Copy a file, unless dry_run is set.
     local src=$1
     local dest=$2
+    shift; shift
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_file!"
         return 1
     fi
+    local msg="cp"
+    [[ "${dest/$src}" == "~" ]] && msg="backup"
     if ((dry_run)); then
-        printf "Copy %s -> %s\n" "$src" "$dest"
+        status "$msg $*" "$src" "$dest"
     else
-        debug "Copy $src -> $dest"
-        cp "$@"
+        debug_status "$msg $*" "$src" "$dest"
+        cp "$@" "$src" "$dest"
     fi
 }
 
@@ -85,15 +88,18 @@ function copy_file_sudo {
     # Copy a file using sudo, unless dry_run is set.
     local src=$1
     local dest=$2
+    shift; shift
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_file_sudo!"
         return 1
     fi
+    local msg="sudo cp"
+    [[ "${dest/$src}" == "~" ]] && msg="sudo backup"
     if ((dry_run)); then
-        printf "Copy (sudo) %s -> %s\n" "$src" "$dest"
+        status "$msg $*" "$src" "$dest"
     else
-        debug "Copy (sudo) $src -> $dest"
-        sudo cp "$@"
+        debug_status "$msg $*" "$src" "$dest"
+        sudo cp "$@" "$src" "$dest"
     fi
 }
 
@@ -106,17 +112,13 @@ function copy_files {
     local src=$1
     local dest=$2
     local blacklistpat=$3
-    if [[ -n "$blacklistpat" ]]; then
-        blacklistpat="($blacklistpat)|(README)"
-    else
-        blacklistpat="(README)"
-    fi
+
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_files!"
         return 1
     fi
     local dirfiles=("$src"/*)
-    echo "DIRFILES:" "${dirfiles[@]}"
+
     if ((${#dirfiles[@]} == 0)); then
         echo_err "No files to install in $repodir."
         return 1
@@ -128,18 +130,16 @@ function copy_files {
         srcfilename="${srcfilepath##*/}"
         debug "Checking $srcfilename against $blacklistpat"
         [[ -z "$srcfilename" ]] && continue
-        [[ "$srcfilename" =~ $blacklistpat ]] && continue
+        [[ -n "$blacklistpat" ]] && [[ "$srcfilename" =~ $blacklistpat ]] && continue
         if [[ -e "${dest}/$srcfilename" ]]; then
             if [[ -f "$srcfilepath" ]]; then
-                echo "Backing up existing file: ~/$srcfilename"
                 if ! copy_file "${home}/${srcfilename}" "${home}/${srcfilename}~"; then
                     echo_err "Failed to backup file: ${home}/${srcfilename}"
                     echo_err "    I will not overwrite the existing file."
                     continue
                 fi
             elif [[ -d "$srcfilepath" ]]; then
-                echo "Backing up existing dir: ~/$srcfilename"
-                if ! copy_file -r "${home}/${srcfilename}" "${home}/${srcfilename}~"; then
+                if ! copy_file "${home}/${srcfilename}" "${home}/${srcfilename}~" -r; then
                     echo_err "Failed to backup directory: ${home}/${srcfilename}"
                     echo_err "    I will not overwrite the existing directory."
                     continue
@@ -151,7 +151,7 @@ function copy_files {
                 echo_err "Failed to copy file: ${srcfilepath} -> ${home}/${srcfilename}"
             fi
         elif [[ -d "$srcfilepath" ]]; then
-            if ! copy_file -r "$srcfilepath" "${home}/${srcfilename}"; then
+            if ! copy_file "$srcfilepath" "${home}/${srcfilename}" -r; then
                 echo_err "Failed to copy directory: ${srcfilepath} -> ${home}/${srcfilename}"
             fi
         else
@@ -164,7 +164,12 @@ function copy_files {
 }
 function debug {
     # Echo a debug message to stderr if debug_mode is set.
-    if ((debug_mode)); then echo_err "$@"; fi
+    ((debug_mode)) && echo_err "$@"
+}
+
+function debug_status {
+    # Print status message about file operations, if debug_mode is set.
+    ((debug_mode)) && status "$@"
 }
 
 function echo_err {
@@ -264,18 +269,20 @@ function install_config {
         debug "Updating config submodules..."
         if ! git submodule update --init; then
             echo_err "Failed to update submodules!"
+            cd -
             return 1
         fi
+        cd -
     fi
     local home="${HOME:-/home/$USER}"
     debug "Copying config files..."
-    if ! copy_files "$repodir" "$home"; then
+    if ! copy_files "$repodir" "$home" "(.gitmodules)|(README)|(^\.git$)"; then
         echo_err "Failed to copy files: $repodir -> $home"
         return 1
     fi
     if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
         debug "Removing temporary repo dir: $repodir"
-        if ! sudo rm -r "$repodir"; then
+        if ! remove_file_sudo "$repodir" -r; then
             echo_err "Failed to remove temporary dir: $repodir"
             return 1
         fi
@@ -292,7 +299,7 @@ function install_dotfiles {
     fi
     local home="${HOME:-/home/$USER}"
     debug "Copying dot files..."
-    if ! copy_files "$repodir" "$home" 'fresh-install'; then
+    if ! copy_files "$repodir" "$home" '(fresh-install)|(README)|(^\.git$)'; then
         echo_err "Failed to copy files: $repodir -> $home"
         return 1
     fi
@@ -306,7 +313,7 @@ function install_dotfiles {
     fi
     if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
         debug "Removing temporary repo dir: $repodir"
-        if ! sudo rm -r "$repodir"; then
+        if ! remove_file_sudo "$repodir" -r; then
             echo_err "Failed to remove temporary dir: $repodir"
             return 1
         fi
@@ -404,6 +411,41 @@ function print_usage {
     "
 }
 
+function remove_file {
+    # Remove a file/dir, and print a status message about it.
+    local file=$1
+    if [[ -z "$file" ]]; then
+        echo_err "Expected \$file for remove_file!"
+        return 1
+    fi
+    shift
+    # Temp files (with the appname in them) are still removed during dry runs.
+    if ((dry_run)) && [[ ! "$file" =~ $appname ]]; then
+        debug_status "Remove $*" "$file"
+        return 0
+    fi
+
+    status "rm $*" "$file"
+    rm "$@" "$file"
+}
+
+function remove_file_sudo {
+    # Remove a file/dir, and print a status message about it.
+    local file=$1
+    if [[ -z "$file" ]]; then
+        echo_err "Expected \$file for remove_file!"
+        return 1
+    fi
+    shift
+    # Temp files (with the appname in them) are still removed during dry runs.
+    if ((dry_run)) && [[ ! "$file" =~ $appname ]]; then
+        debug_status "Remove $*" "$file"
+        return 0
+    fi
+    status "sudo rm $*" "$file"
+    sudo rm "$@" "$file"
+}
+
 function run_cmd {
     # Run a command, unless dry_run is set (then just print it).
     local cmd=$1
@@ -417,6 +459,19 @@ function run_cmd {
     fi
 }
 
+function status {
+    # Print a message about a file/directory operation.
+    # Arguments:
+    #   $1 : Operation (BackUp, Copy File, Copy Dir)
+    #   $2 : File 1
+    #   $3 : File 2
+    printf "%-15s: %-40s" "$1" "$2"
+    if [[ -n "$3" ]]; then
+        printf " -> %s\n" "$3"
+    else
+        printf "\n"
+    fi
+}
 # Make sure we have at least one package list to work with.
 check_required_files || exit 1
 

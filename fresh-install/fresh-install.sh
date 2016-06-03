@@ -3,7 +3,6 @@
 # My install script, that installs packages that I use frequently.
 # -Christopher Welborn 05-31-2016
 
-# TODO: clone github.com/cjwelborn/cj-config and cj-dotfiles, copy to machine.
 shopt -s nullglob
 
 appname="fresh-install"
@@ -41,6 +40,128 @@ function check_required_files {
     return 0
 }
 
+function clone_repo {
+    # Clone a repo into a temporary directory, and print the directory.
+    # Arguments:
+    #   $1 : Repo url.
+    #   $2 : Arguments for git.
+    local tmpdir
+    local repo=$1
+    shift
+    local gitargs=("$@")
+    if [[ -z "$repo" ]]; then
+        echo_err "No repo given to clone_repo!"
+        return 1
+    fi
+    if ! tmpdir="$(mktemp -d -p /tmp "${appname/ /-}.XXX")"; then
+        echo_err "Failed to create temporary directory!"
+        return 1
+    fi
+    debug "Cloning repo '$repo' to $tmpdir."
+    if ! git clone "${gitargs[@]}" "$repo" "$tmpdir"; then
+        echo_err "Failed to clone repo: $repo"
+        return 1
+    fi
+    printf "%s" "$tmpdir"
+}
+
+function copy_file {
+    # Copy a file, unless dry_run is set.
+    local src=$1
+    local dest=$2
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for copy_file!"
+        return 1
+    fi
+    if ((dry_run)); then
+        printf "Copy %s -> %s\n" "$src" "$dest"
+    else
+        debug "Copy $src -> $dest"
+        cp "$@"
+    fi
+}
+
+function copy_file_sudo {
+    # Copy a file using sudo, unless dry_run is set.
+    local src=$1
+    local dest=$2
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for copy_file_sudo!"
+        return 1
+    fi
+    if ((dry_run)); then
+        printf "Copy (sudo) %s -> %s\n" "$src" "$dest"
+    else
+        debug "Copy (sudo) $src -> $dest"
+        sudo cp "$@"
+    fi
+}
+
+function copy_files {
+    # Safely copy files from one directory to another.
+    # Arguments:
+    #   $1 : Source directory.
+    #   $2 : Destination directory.
+    #   $3 : Blacklist pattern, optional.
+    local src=$1
+    local dest=$2
+    local blacklistpat=$3
+    if [[ -n "$blacklistpat" ]]; then
+        blacklistpat="($blacklistpat)|(README)"
+    else
+        blacklistpat="(README)"
+    fi
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for copy_files!"
+        return 1
+    fi
+    local dirfiles=("$src"/*)
+    echo "DIRFILES:" "${dirfiles[@]}"
+    if ((${#dirfiles[@]} == 0)); then
+        echo_err "No files to install in $repodir."
+        return 1
+    fi
+    local srcfilepath
+    local srcfilename
+
+    for srcfilepath in "${dirfiles[@]}"; do
+        srcfilename="${srcfilepath##*/}"
+        debug "Checking $srcfilename against $blacklistpat"
+        [[ -z "$srcfilename" ]] && continue
+        [[ "$srcfilename" =~ $blacklistpat ]] && continue
+        if [[ -e "${dest}/$srcfilename" ]]; then
+            if [[ -f "$srcfilepath" ]]; then
+                echo "Backing up existing file: ~/$srcfilename"
+                if ! copy_file "${home}/${srcfilename}" "${home}/${srcfilename}~"; then
+                    echo_err "Failed to backup file: ${home}/${srcfilename}"
+                    echo_err "    I will not overwrite the existing file."
+                    continue
+                fi
+            elif [[ -d "$srcfilepath" ]]; then
+                echo "Backing up existing dir: ~/$srcfilename"
+                if ! copy_file -r "${home}/${srcfilename}" "${home}/${srcfilename}~"; then
+                    echo_err "Failed to backup directory: ${home}/${srcfilename}"
+                    echo_err "    I will not overwrite the existing directory."
+                    continue
+                fi
+            fi
+        fi
+        if [[ -f "$srcfilepath" ]]; then
+            if ! copy_file "$srcfilepath" "${home}/${srcfilename}"; then
+                echo_err "Failed to copy file: ${srcfilepath} -> ${home}/${srcfilename}"
+            fi
+        elif [[ -d "$srcfilepath" ]]; then
+            if ! copy_file -r "$srcfilepath" "${home}/${srcfilename}"; then
+                echo_err "Failed to copy directory: ${srcfilepath} -> ${home}/${srcfilename}"
+            fi
+        else
+            echo_err "Unknown file type: $srcfilepath"
+            continue
+        fi
+    done
+
+    return 0
+}
 function debug {
     # Echo a debug message to stderr if debug_mode is set.
     if ((debug_mode)); then echo_err "$@"; fi
@@ -128,6 +249,71 @@ function generate_pip_cmds {
     echo "$finalcmd"
 }
 
+function install_config {
+    # Install config files from github.com/cjwelborn/cj-config.git
+    local repodir
+    if ! repodir="$(clone_repo "https://github.com/cjwelborn/cj-config.git")"; then
+        echo_err "Repo clone failed, cannot install config."
+        return 1
+    else
+        debug "Changing to repo directory: $repodir"
+        if ! cd "$repodir"; then
+            echo_err "Failed to cd into repo: $repodir"
+            return 1
+        fi
+        debug "Updating config submodules..."
+        if ! git submodule update --init; then
+            echo_err "Failed to update submodules!"
+            return 1
+        fi
+    fi
+    local home="${HOME:-/home/$USER}"
+    debug "Copying config files..."
+    if ! copy_files "$repodir" "$home"; then
+        echo_err "Failed to copy files: $repodir -> $home"
+        return 1
+    fi
+    if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
+        debug "Removing temporary repo dir: $repodir"
+        if ! sudo rm -r "$repodir"; then
+            echo_err "Failed to remove temporary dir: $repodir"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+function install_dotfiles {
+    # Install dotfiles files from github.com/cjwelborn/cj-dotfiles.git
+    local repodir
+    if ! repodir="$(clone_repo "https://github.com/cjwelborn/cj-dotfiles.git")"; then
+        echo_err "Repo clone failed, cannot install dot files."
+        return 1
+    fi
+    local home="${HOME:-/home/$USER}"
+    debug "Copying dot files..."
+    if ! copy_files "$repodir" "$home" 'fresh-install'; then
+        echo_err "Failed to copy files: $repodir -> $home"
+        return 1
+    fi
+    if [[ -e "${home}/bash.bashrc" ]]; then
+        echo "Installing global bashrc."
+        if [[ -e /etc/bash.bashrc ]]; then
+            echo "Backing up global bashrc."
+            copy_file_sudo '/etc/bash.bashrc' '/etc/bash.bashrc~'
+        fi
+        copy_file_sudo "${home}/bash.bashrc" "/etc/bash.bashrc"
+    fi
+    if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
+        debug "Removing temporary repo dir: $repodir"
+        if ! sudo rm -r "$repodir"; then
+            echo_err "Failed to remove temporary dir: $repodir"
+            return 1
+        fi
+    fi
+    return 0
+}
+
 function is_system_pip {
     # Returns a success exit status if the pip package is found in the
     # global dir.
@@ -197,12 +383,14 @@ function print_usage {
     Usage:
         $appscript -h | -v
         $appscript [-l] [-l2] [-l3] [-D]
-        $appscript [-a] [-p2] [-p3] [-D]
+        $appscript [-a] [-c] [-f] [-p2] [-p3] [-D]
 
     Options:
         -a,--apt        : Install apt packages.
+        -c,--config     : Install config from cj-config repo.
         -D,--debug      : Print some debug info while running.
         -d,--dryrun     : Don't do anything, just print the commands.
+        -f,--dotfiles   : Install dot files from cj-dotfiles repo.
         -h,--help       : Show this message.
         -l,--list       : List installed packages on this machine.
                           Used to build this/other install scripts.
@@ -236,6 +424,8 @@ declare -a nonflags
 dry_run=0
 do_all=1
 do_apt=0
+do_config=0
+do_dotfiles=0
 do_list=0
 do_listpip2=0
 do_listpip3=0
@@ -248,11 +438,19 @@ for arg; do
             do_apt=1
             do_all=0
             ;;
+        "-c"|"--config" )
+            do_config=1
+            do_all=0
+            ;;
         "-d"|"--dryrun" )
             dry_run=1
             ;;
         "-D"|"--debug" )
             debug_mode=1
+            ;;
+        "-f"|"--dotfiles" )
+            do_dotfiles=1
+            do_all=0
             ;;
         "-h"|"--help" )
             print_usage ""
@@ -293,6 +491,7 @@ if ((do_list || do_listpip2 || do_listpip3)); then
     ((do_listpip3)) && list_pip "3"
     exit
 fi
+
 if ((do_all || do_apt)); then
     run_cmd "sudo apt-get update" "Upgrading the packages list..."
     run_cmd "$(generate_apt_cmds)" "Installing apt packages..."
@@ -303,4 +502,10 @@ if ((do_all || do_pip2)); then
 fi
 if ((do_all || do_pip3)); then
     run_cmd "$(generate_pip_cmds 3)" "Installing pip3 packages..."
+fi
+if ((do_all || do_config)); then
+    install_config || echo_err "Failed to install config files!"
+fi
+if ((do_all || do_dotfiles)); then
+    install_dotfiles || echo_err "Failed to install dot files!"
 fi

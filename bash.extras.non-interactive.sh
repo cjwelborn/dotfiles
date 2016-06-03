@@ -16,6 +16,8 @@ shopt -s autocd
 # Allow using directory-variables without the $.
 # Example: cd Scripts (like: cd $Scripts)
 shopt -s cdable_vars
+# Allow recursive star patterns (**/*)
+shopt -s globstar
 
 function _echo {
     # Echo only in interactive mode.

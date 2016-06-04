@@ -1,0 +1,5 @@
+# These are ruby gem names.
+# These will be gem installed by fresh-install.sh.
+
+sass
+scss_lint

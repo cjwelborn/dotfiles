@@ -20,11 +20,20 @@ apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
 
+# Packages needed to run this script.
+# These should be in $appname-pkgs.txt, but just incase I'll try to install
+# them anyway after the initial apt-get commands.
+script_depends=("git")
+
+filename_apm="$appdir/$appname-apm-pkgs.txt"
+filename_gems="$appdir/$appname-gems.txt"
 filename_pkgs="$appdir/$appname-pkgs.txt"
 filename_pip2_pkgs="$appdir/$appname-pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/$appname-pip3-pkgs.txt"
 filename_remote_debs="$appdir/$appname-remote-debs.txt"
 required_files=(
+    "$filename_apm"
+    "$filename_gems"
     "$filename_pkgs"
     "$filename_pip2_pkgs"
     "$filename_pip3_pkgs"
@@ -33,6 +42,9 @@ required_files=(
 
 # Location for third-party deb packages.
 debdir="$appdir/debs"
+
+# Any failing command that passes through run_cmd will be stored here.
+declare -A failed_cmds
 
 # This can be set with the --debug flag.
 debug_mode=0
@@ -80,6 +92,15 @@ function clone_repo {
     printf "%s" "$tmpdir"
 }
 
+function cmd_exists {
+    # Shortcut to which $1 &>/dev/null, with a better message on failure.
+    if ! which "$1" &>/dev/null; then
+        echo_err "Executable not found: $1"
+        return 1
+    fi
+    return 0
+}
+
 function copy_file {
     # Copy a file, unless dry_run is set.
     local src=$1
@@ -90,7 +111,7 @@ function copy_file {
         return 1
     fi
     local msg="cp"
-    [[ "${dest/$src}" == "~" ]] && msg="backup"
+    [[ "${dest//$src}" == "~" ]] && msg="backup"
     if ((dry_run)); then
         status "$msg $*" "$src" "$dest"
     else
@@ -109,7 +130,7 @@ function copy_file_sudo {
         return 1
     fi
     local msg="sudo cp"
-    [[ "${dest/$src}" == "~" ]] && msg="sudo backup"
+    [[ "${dest//$src}" == "~" ]] && msg="sudo backup"
     if ((dry_run)); then
         status "$msg $*" "$src" "$dest"
     else
@@ -176,6 +197,7 @@ function copy_files {
 
     return 0
 }
+
 function debug {
     # Echo a debug message to stderr if debug_mode is set.
     ((debug_mode)) && echo_err "$@"
@@ -203,68 +225,69 @@ function fail_usage {
     exit 1
 }
 
-function generate_apt_cmds {
-    # Generate an apt-get install command to install packages from
-    # $appname-pkgs.txt
-    if [[ ! -e "$filename_pkgs" ]]; then
-        echo_err "Cannot install apt packages, missing $filename_pkgs."
-        return 1
-    fi
-    local pkgs
-    mapfile -t pkgs < "$filename_pkgs"
-    printf "sudo apt-get -y --ignore-missing install %s;\n" "${pkgs[@]}"
+function find_apm_packages {
+    # List installed apm packages on this machine.
+    cmd_exists "apm" || return 1
+    debug "Gathering installed apm packages."
+    echo "# These are atom package names (apm)."
+    echo -e "# These packages will be apm installed by $appscript.\n"
+    # List names only, so the latest version is downloaded on install.
+    # Using array/loop to remove extra newlines at the end of `apm ls`.
+    local names
+    names=($(apm ls --bare --installed | cut -d'@' -f1))
+    local name
+    for name in "${names[@]}"; do
+        is_skipped_line "$name" && continue
+        printf "%s\n" "$name"
+    done
 }
 
-function generate_pip_cmds {
-    # Generate a pip install comand to install packages from
-    # $appname-pip$1.txt
+function find_packages {
+    # List installed packages on this machine.
+    local blacklisted=("linux-image" "linux-signed" "nvidia")
+    local blacklistpat=""
+    for pkgname in "${blacklisted[@]}"; do
+        [[ -n "$blacklistpat" ]] && blacklistpat="${blacklistpat}|"
+        blacklistpat="${blacklistpat}($pkgname)"
+    done
+    debug "Gathering installed apt packages ( ignoring" "${blacklisted[@]}" ")."
+    echo "# These are apt/debian packages."
+    echo -e "# These packages will be apt-get installed by $appscript\n"
+    # shellcheck disable=SC2016
+    # ...single-quotes are intentional.
+    comm -13 \
+      <(gzip -dc /var/log/installer/initial-status.gz | sed -n 's/^Package: //p' | sort) \
+      <(comm -23 \
+        <(dpkg-query -W -f='${Package}\n' | sed 1d | sort) \
+        <(apt-mark showauto | sort) \
+      ) | grep -E -v "$blacklistpat"
+}
+
+function find_pip {
+    # List installed pip packages on this machine.
+    # Arguments:
+    #   $1 : Pip version (2 or 3).
     local ver="${1:-3}"
-    local varname="filename_pip${ver}_pkgs"
-    local filename="${!varname}"
-    if [[ ! -e "$filename" ]]; then
-        echo_err "Cannot install pip${ver} packages, missing ${filename}."
-        return 1
-    elif ! which "pip${ver}" &>/dev/null; then
-        echo_err "Cannot find pip${ver} executable!"
-        return 1
+    local exe="pip${ver}"
+    local exepath
+    if ! exepath="$(which "$exe" 2>/dev/null)"; then
+        fail "Failed to locate $exe!"
+    else
+        [[ -n "$exepath" ]] || fail "Failed to locate $exe"
     fi
-    declare -a sudopkgs
-    declare -a normalpkgs
-    local sudopkgs
-    local normalpkgs
+    debug "Listing pip${ver} packages..."
     local pkgname
-    local sudopat='^\*'
-    while IFS=$'\n' read -r pkgname; do
-        # Ignore comment lines.
-        is_skipped_line "$pkgname" && continue
-        if [[ "$pkgname" =~ $sudopat ]]; then
-            sudopkgs=("${sudopkgs[@]}" "${pkgname:1}")
+    echo "# These are python $ver package names."
+    echo "# These packages will be installed with pip${ver} by $appscript."
+    echo -e "# Packages marked with * are global packages, and require sudo to install.\n"
+    for pkgname in $($exepath list | cut -d' ' -f1); do
+        debug "Checking for system/local package: $pkgname"
+        if is_system_pip "$ver" "$pkgname"; then
+            echo "*${pkgname}"
         else
-            normalpkgs=("${normalpkgs[@]}" "$pkgname")
+            echo "$pkgname"
         fi
-    done < "$filename"
-    if ((${#sudopkgs[@]} == 0 && ${#normalpkgs[@]} == 0)); then
-        echo_err "No pip${ver} packages found in $filename."
-        return 1
-    fi
-    local finalcmd=""
-    if ((${#sudopkgs[@]})); then
-        local sudocmd
-        finalcmd="# Python $ver GLOBAL pip command:"$'\n'
-        sudocmd="$(printf "sudo pip${ver} install %s;\n" "${sudopkgs[@]}")"
-        finalcmd="${finalcmd}${sudocmd};"$'\n'
-    fi
-    if ((${#normalpkgs[@]})); then
-        local normalcmd
-        finalcmd="${finalcmd}"$'\n'"# Python $ver LOCAL pip command:"$'\n'
-        normalcmd="$(printf "pip${ver} install %s;\n" "${normalpkgs[@]}")"
-        finalcmd="${finalcmd}${normalcmd}"
-    fi
-    if [[ -z "$finalcmd" ]]; then
-        echo_err "No pip${ver} packages to install."
-        return 1
-    fi
-    echo "$finalcmd"
+    done
 }
 
 function get_deb_desc {
@@ -304,6 +327,56 @@ function get_debfiles {
     for debfile in "${debfiles[@]}"; do
         printf "%s\n" "$debfile"
     done
+}
+
+function install_apm_packages {
+    # Install apm packages from $appname-apm.txt.
+    cmd_exists "apm" || return 1
+    local apmnames
+    apmnames=($(list_file "$filename_apm")) || return 1
+    ((${#apmnames[@]})) || return 1
+    local apmname
+    local errs=0
+    local installcmd
+    local installdesc
+    for apmname in "${apmnames[@]}"; do
+        installcmd="apm install '$apmname'"
+        installdesc="Installing apm package: $apmname"
+        run_cmd "$installcmd" "$installdesc" || let errs+=1
+    done
+    return $errs
+}
+
+function install_apt_depends {
+    # Install all script dependencies.
+    ((${#script_depends[@]})) || return 1
+    local errs=0
+    local pkgname
+    local installcmd
+    local installdesc
+    for pkgname in "${script_depends[@]}"; do
+        installcmd="sudo apt-get -y --ignore-missing install '$pkgname'"
+        installdesc="Installing script-dependency package: $pkgname"
+        run_cmd "$installcmd" "$installdesc" || let errs+=1
+    done
+    return $errs
+}
+
+function install_apt_packages {
+    # Install packages from $appname-pkgs.txt.
+    local pkgnames
+    pkgnames=($(list_file "$filename_pkgs")) || return 1;
+    ((${#pkgnames[@]})) || return 1
+    local errs=0
+    local pkgname
+    local installcmd
+    local installdesc
+    for pkgname in "${pkgnames[@]}"; do
+        installcmd="sudo apt-get -y --ignore-missing install '$pkgname'"
+        installdesc="Installing apt package: $pkgname"
+        run_cmd "$installcmd" "$installdesc" || let errs+=1
+    done
+    return $errs
 }
 
 function install_config {
@@ -346,9 +419,15 @@ function install_debfiles {
     # Install all .deb files in $appdir/debs/ (unless dry_run is set).
     local debfiles=($(get_debfiles))
     local debfile
+    local errs=0
+    local installcmd
+    local installdesc
     for debfile in "${debfiles[@]}"; do
-        run_cmd "sudo dpkg -i \"$debfile\"" "Installing ${debfile##*/}..."
+        installcmd="sudo dpkg -i '$debfile'"
+        installdesc="Installing ${debfile##*/}..."
+        run_cmd "$installcmd" "$installdesc" || let errs+=1
     done
+    return $errs
 }
 
 function install_debfiles_remote {
@@ -362,17 +441,17 @@ function install_debfiles_remote {
         return 1
     fi
     local deblines
-    if ! mapfile -t deblines <"$filename_remote_debs"; then
-        echo_err "Failed to read remote deb file list: $filename_remote_debs"
-        return 1
-    fi
+    deblines=($(list_file "$filename_remote_debs")) || return 1
+    ((${#deblines[@]})) || return 1
     local debline
     local pkgname
     local pkgurl
     local pkgpath
     local pkgmsgs
+    local errs=0
+    local installcmd
+    local installdesc
     for debline in "${deblines[@]}"; do
-        is_skipped_line "$debline" && continue
         pkgname="${debline%%=*}"
         pkgurl="${debline##*=}"
         if [[ -z "$pkgname" || -z "$pkgurl" || ! "$debline" =~ = ]]; then
@@ -385,21 +464,25 @@ function install_debfiles_remote {
         echo -e "Downloading $pkgname from: $pkgurl\n"
         if ! wget "$pkgurl" -O "$pkgpath"; then
             echo_err "Failed to download deb package from: $pkgurl"
+            let errs+=1
             continue
         fi
         if [[ ! -e "$pkgpath" ]]; then
             echo_err "No package found after download: $pkgurl"
+            let errs+=1
             continue
         fi
         pkgmsgs=("Installing third-party package: ${pkgpath##*/}")
         pkgmsgs+=("$(get_deb_desc "$pkgpath")")
-
-        run_cmd "sudo dpkg -i \"$pkgpath\"" "$(strjoin $'\n' "${pkgmsgs[@]}")"
+        installcmd="sudo dpkg -i '$pkgpath'"
+        installdesc="$(strjoin $'\n' "${pkgmsgs[@]}")"
+        run_cmd "$installcmd" "$installdesc" || let errs+=1
     done
     if ! remove_file_sudo "$dldir" -r; then
         echo_err "Failed to remove temporary directory: $dldir"
-        return 1
+        let errs+=1
     fi
+    return $errs
 }
 
 function install_dotfiles {
@@ -450,10 +533,82 @@ function install_dotfiles {
     return 0
 }
 
+function install_gems {
+    # Install gem packages found in $appname-gems.txt.
+    cmd_exists "gem" || return 1
+    local gemnames
+    if ! gemnames=($(list_gems)); then
+        echo_err "Unable to install gems."
+        return 1
+    fi
+    local gemname
+    local errs=0
+    for gemname in "${gemnames[@]}"; do
+        run_cmd "gem install $gemname" "Installing gem: $gemname" || let errs+=1
+    done
+    return $errs
+}
+
+function install_pip_packages {
+    # Install pip packages from $appname-pip${1}.txt.
+    local ver="${1:-3}"
+    local varname="filename_pip${ver}_pkgs"
+    local filename="${!varname}"
+    if [[ ! -e "$filename" ]]; then
+        echo_err "Cannot install pip${ver} packages, missing ${filename}."
+        return 1
+    fi
+    cmd_exists "pip${ver}" || return 1
+
+    declare -a sudopkgs
+    declare -a normalpkgs
+    local sudopkgs
+    local normalpkgs
+    local pkgnames
+    pkgnames=($(list_file "$filename")) || return 1
+    ((${#pkgnames[@]})) || return 1
+    local pkgname
+    local sudopat='^\*'
+    for pkgname in "${pkgnames[@]}"; do
+        if [[ "$pkgname" =~ $sudopat ]]; then
+            sudopkgs+=("${pkgname:1}")
+        else
+            normalpkgs+=("$pkgname")
+        fi
+    done
+    if ((${#sudopkgs[@]} == 0 && ${#normalpkgs[@]} == 0)); then
+        echo_err "No pip${ver} packages found in $filename."
+        return 1
+    fi
+    local errs=0
+    local installcmd
+    local installdesc
+    if ((${#sudopkgs[@]})); then
+        echo "Installing global pip${ver} packages..."
+        local sudopkg
+
+        for sudopkg in "${sudopkgs[@]}"; do
+            installcmd="sudo pip${ver} install '$sudopkg'"
+            installdesc="Installing global pip${ver} package: $sudopkg"
+            run_cmd "$installcmd" "$installdesc" || let errs+=1
+        done
+    fi
+    if ((${#normalpkgs[@]})); then
+        echo "Installing local pip${ver} packages..."
+        local normalpkg
+        for normalpkg in "${normalpkgs[@]}"; do
+            installcmd="pip${ver} install '$normalpkg'"
+            installdesc="Installing local pip${ver} package: $normalpkg"
+            run_cmd "$installcmd" "$installdesc" || let errs+=1
+        done
+    fi
+    return $errs
+}
+
 function is_skipped_line {
     # Returns a success exit status if $1 is a line that should be skipped
     # in all config files (comments, blank lines, etc.)
-    [[ -z "$1" ]] && return 0
+    [[ -z "${1// }" ]] && return 0
     # Regexp for matching comment lines.
     local commentpat='^[ \t]+?#'
     [[ "$1" =~ $commentpat ]] && return 0
@@ -520,56 +675,44 @@ function list_debfiles_remote {
     done
 }
 
-function list_packages {
-    # List installed packages on this machine.
-    local blacklisted=("linux-image" "linux-signed" "nvidia")
-    local blacklistpat=""
-    for pkgname in "${blacklisted[@]}"; do
-        [[ -n "$blacklistpat" ]] && blacklistpat="${blacklistpat}|"
-        blacklistpat="${blacklistpat}($pkgname)"
+function list_failures {
+    # List any failed commands in $failed_cmds[@].
+    # Returns a success status code if there are failures.
+    ((${#failed_cmds[@]})) || return 1
+    echo -e "\nFailed commands (${#failed_cmds[@]}):"
+    local cmd
+    for cmd in "${!failed_cmds[@]}"; do
+        printf "\n    Failed: %s\n        %s\n" "${failed_cmds[$cmd]}" "$cmd"
     done
-    debug "Gathering installed apt packages ( ignoring" "${blacklisted[@]}" ")."
-    echo "# These are apt/debian packages."
-    echo -e "# These packages will be apt-get installed by $appname.sh\n"
-    # shellcheck disable=SC2016
-    # ...single-quotes are intentional.
-    comm -13 \
-      <(gzip -dc /var/log/installer/initial-status.gz | sed -n 's/^Package: //p' | sort) \
-      <(comm -23 \
-        <(dpkg-query -W -f='${Package}\n' | sed 1d | sort) \
-        <(apt-mark showauto | sort) \
-      ) | grep -E -v "$blacklistpat"
+    return 0
 }
 
-function list_pip {
-    # List installed pip packages.
-    local ver="${1:-3}"
-    local exe="pip${ver}"
-    local exepath
-    if ! exepath="$(which "$exe" 2>/dev/null)"; then
-        fail "Failed to locate $exe!"
-    else
-        [[ -n "$exepath" ]] || fail "Failed to locate $exe"
+function list_file {
+    # List all names from one of the $appname-*.txt lists.
+    if [[  ! -e "$1" ]]; then
+        echo_err "No list file found: $1"
+        return 1
     fi
-    debug "Listing pip${ver} packages..."
-    local pkgname
-    echo "# These are python $ver package names."
-    echo "# These packages will be installed with pip${ver} by $appname.sh."
-    echo -e "# Packages marked with * are global packages, and require sudo to install.\n"
-    for pkgname in $($exepath list | cut -d' ' -f1); do
-        debug "Checking for system/local package: $pkgname"
-        if is_system_pip "$ver" "$pkgname"; then
-            echo "*${pkgname}"
-        else
-            echo "$pkgname"
-        fi
+    local lines
+    if ! mapfile -t lines <"$1"; then
+        echo_err "Unable to read from: $1"
+        return 1
+    fi
+    if ((${#lines[@]} == 0)); then
+        echo_err "List is empty: $1"
+        return 1
+    fi
+    local line
+    for line in "${lines[@]}"; do
+        is_skipped_line "$line" && continue
+        printf "%s\n" "$line"
     done
 }
 
 function make_temp_dir {
     # Make a temporary directory and print it's path.
     local tmproot="/tmp"
-    if ! mktemp -d -p "$tmproot" "${appname/ /-}.XXX"; then
+    if ! mktemp -d -p "$tmproot" "${appname// /-}.XXX"; then
         echo_err "Unable to create a temporary directory in ${tmproot}!"
         return 1
     fi
@@ -584,30 +727,42 @@ function print_usage {
 
     Usage:
         $appscript -h | -v
-        $appscript [-l] [-l2] [-l3] [-lp] [-D]
-        $appscript [-a] [-c] [-f] [-p] [-p2] [-p3] [-D]
+        $appscript [-f2] [-f3] [-fp] [-D]
+        $appscript [-l] [-l2] [-l3] [-ld] [-lg] [-D]
+        $appscript [-a] [-ap] [-c] [-f] [-g] [-p] [-p2] [-p3] [-D]
 
     Options:
-        -a,--apt        : Install apt packages.
-        -c,--config     : Install config from cj-config repo.
-        -D,--debug      : Print some debug info while running.
-        -d,--dryrun     : Don't do anything, just print the commands.
-                          Files will be downloaded to a temporary directory,
-                          but deleted soon after (or at least on reboot).
-                          Nothing will be installed to the system.
-        -f,--dotfiles   : Install dot files from cj-dotfiles repo.
-        -h,--help       : Show this message.
-        -l,--list       : List installed packages on this machine.
-                          Used to build this/other install scripts.
-        -l2,--listpip2  : List installed pip 2.7 packages on this machine.
-                          Used to build this/other install scripts.
-        -l3,--listpip3  : List installed pip 3 packages on this machine.
-                          Used to build this/other install scripts.
-        -lp,--listdebs  : List all .deb files in ./debs.
-        -p,--debfiles   : Install ./debs/*.deb packages.
-        -p2,--pip2      : Install pip2 packages.
-        -p3,--pip3      : Install pip3 packages.
-        -v,--version    : Show $appname version and exit.
+        -a,--apt            : Install apt packages.
+        -ap,--apm           : Install apm packages.
+        -c,--config         : Install config from cj-config repo.
+        -D,--debug          : Print some debug info while running.
+        -d,--dryrun         : Don't do anything, just print the commands.
+                              Files will be downloaded to a temporary
+                              directory, but deleted soon after (or at least
+                              on reboot).
+                              Nothing will be installed to the system.
+        -f,--dotfiles       : Install dot files from cj-dotfiles repo.
+        -f2,--findpip2      : List installed pip 2.7 packages on this machine.
+                              Used to build $filename_pip2_pkgs.
+        -f3,--findpip3      : List installed pip 3 packages on this machine.
+                              Used to build $filename_pip3_pkgs.
+        -fa,--findapm       : List installed apm packages on this machine.
+                              Used to build $filename_apm.
+        -fp,--findpackages  : List installed packages on this machine.
+                              Used to build $filename_pkgs.
+        -g,--gems           : Install ruby gem packages.
+        -h,--help           : Show this message.
+        -l,--list           : List apt packages in $filename_pkgs.
+        -l2,--listpip2      : List pip2 packages in $filename_pip2_pkgs.
+        -l3,--listpip3      : List pip3 packages in $filename_pip3_pkgs.
+        -la,--listapm       : List apm packages in $filename_apm.
+        -ld,--listdebs      : List all .deb files in ./debs, and remote
+                              packages in $filename_remote_debs.
+        -lg,--listgems      : List gem package names in $filename_gems.
+        -p,--debfiles       : Install ./debs/*.deb packages.
+        -p2,--pip2          : Install pip2 packages.
+        -p3,--pip3          : Install pip3 packages.
+        -v,--version        : Show $appname version and exit.
     "
 }
 
@@ -649,13 +804,19 @@ function remove_file_sudo {
 function run_cmd {
     # Run a command, unless dry_run is set (then just print it).
     local cmd=$1
+    if [[ -z "${cmd// }" ]]; then
+        echo_err "run_cmd: No command to run. ${2:-No description either.}"
+        return 1
+    fi
+
     local desc="${2:-Running $1}"
     ((${#desc} > 80)) && desc="${desc:0:80}..."
     echo -e "\n$desc"
     if ((dry_run)); then
         echo "    $cmd"
     else
-        eval "$cmd"
+        # Run command and add it to failed_cmds if it fails.
+        eval "$cmd" || failed_cmds[$cmd]=$2
     fi
 }
 
@@ -679,18 +840,26 @@ function strjoin {
     echo "$*"
 }
 
-# Make sure we have at least one package list to work with.
-check_required_files || exit 1
-
+# Switches for script actions, set by arg parsing.
 declare -a nonflags
 dry_run=0
 do_all=1
+do_apm=0
 do_apt=0
 do_config=0
 do_debfiles=0
 do_dotfiles=0
+do_find=0
+do_findapm=0
+do_findpackages=0
+do_findpip2=0
+do_findpip3=0
+do_gems=0
+do_listing=0
 do_list=0
+do_listapm=0
 do_listdebs=0
+do_listgems=0
 do_listpip2=0
 do_listpip3=0
 do_pip2=0
@@ -700,6 +869,10 @@ for arg; do
     case "$arg" in
         "-a"|"--apt" )
             do_apt=1
+            do_all=0
+            ;;
+        "-ap"|"--apm" )
+            do_apm=1
             do_all=0
             ;;
         "-c"|"--config" )
@@ -716,20 +889,52 @@ for arg; do
             do_dotfiles=1
             do_all=0
             ;;
+        "-f2"|"--findpip2" )
+            do_find=1
+            do_findpip2=1
+            ;;
+        "-f3"|"--findpip3" )
+            do_find=1
+            do_findpip3=1
+            ;;
+        "-fa"|"--findapm" )
+            do_find=1
+            do_findapm=1
+            ;;
+        "-fp"|"--findpackages" )
+            do_find=1
+            do_findpackages=1
+            ;;
+        "-g"|"--gems" )
+            do_gems=1
+            do_all=0
+            ;;
         "-h"|"--help" )
             print_usage ""
             exit 0
             ;;
         "-l"|"--list" )
+            do_listing=1
             do_list=1
             ;;
         "-l2"|"--listpip2" )
+            do_listing=1
             do_listpip2=1
             ;;
         "-l3"|"--listpip3" )
+            do_listing=1
             do_listpip3=1
             ;;
-        "-lp"|"--listdebs" )
+        "-la"|"--listapm" )
+            do_listing=1
+            do_listapm=1
+            ;;
+        "-lg"|"--listgems" )
+            do_listing=1
+            do_listgems=1
+            ;;
+        "-ld"|"--listdebs" )
+            do_listing=1
             do_listdebs=1
             ;;
         "-p"|"--debfiles" )
@@ -752,38 +957,72 @@ for arg; do
             fail_usage "Unknown flag argument: $arg"
             ;;
         *)
-            nonflags=("${nonflags[@]}" "$arg")
+            nonflags+=("$arg")
     esac
 done
 
-if ((do_list || do_listdebs || do_listpip2 || do_listpip3)); then
-    ((do_list)) && list_packages
-    ((do_listpip2)) && list_pip "2"
-    ((do_listpip3)) && list_pip "3"
-    ((do_listdebs)) && {
-        list_debfiles
-        list_debfiles_remote
+if ((do_find)); then
+    ((do_findapm)) && {
+        find_apm_packages || echo_err "Failed to find apm packages."
     }
+    ((do_findpackages)) && {
+        find_packages || echo_err "Failed to find apt packages."
+    }
+    ((do_findpip2)) && {
+        find_pip "2" || echo_err "Failed to find pip2 packages."
+    }
+    ((do_findpip3)) && {
+        find_pip "3" || echo_err "Failed to find pip3 packages."
+    }
+
+    list_failures && exit 1
+    exit
+elif ((do_listing)); then
+    ((do_list)) && {
+        list_file "$filename_pkgs" || echo_err "Failed to list apt packages."
+    }
+    ((do_listapm)) && {
+        list_file "$filename_apm" || echo_err "Failed to list apm packages."
+    }
+    ((do_listdebs)) && {
+        list_debfiles || echo_err "Failed to list .deb files."
+        list_debfiles_remote || echo_err "Failed to list remote .deb files."
+    }
+    ((do_listgems)) && {
+        list_file "$filename_gems" || echo_err "Failed to list gems."
+    }
+    ((do_listpip2)) && {
+        list_file "$filename_pip2_pkgs" || echo_err "Failed to list pip2 packages."
+    }
+    ((do_listpip3)) && {
+        list_file "$filename_pip3_pkgs" || echo_err "Failed to list pip3 packages."
+    }
+
+    list_failures && exit 1
     exit
 fi
+
+# Make sure we have at least one package list to work with.
+check_required_files || exit 1
 
 # System apt packages.
 if ((do_all || do_apt)); then
     run_cmd "sudo apt-get update" "Upgrading the packages list..."
-    run_cmd "$(generate_apt_cmds)" "Installing apt packages..."
+    install_apt_packages || echo_err "Failed to install some apt packages ($?)\n    ...this may be okay though."
+    install_apt_depends || echo_err "Failed to install some script dependencies ($?)\n    ...future installs may fail."
 fi
 # Local/remote apt packages.
 if ((do_all || do_debfiles)); then
-    install_debfiles || "Failed to install third-party deb packages!"
-    install_debfiles_remote || "Failed to install remote third-party deb packages!"
+    install_debfiles || echo_err "Failed to install third-party deb packages (~$?)!"
+    install_debfiles_remote || echo_err "Failed to install remote third-party deb packages (~$?)!"
 fi
 # Pip2 packages.
 if ((do_all || do_pip2)); then
-    run_cmd "$(generate_pip_cmds 2)" "Installing pip2 packages..."
+    install_pip_packages "2" || echo_err "Failed to install some pip2 packages ($?)\n    ...this may be okay though."
 fi
 # Pip3 packages.
 if ((do_all || do_pip3)); then
-    run_cmd "$(generate_pip_cmds 3)" "Installing pip3 packages..."
+    install_pip_packages "3" || echo_err "Failed to install some pip3 packages ($?)\n    ...this may be okay though."
 fi
 # App config files.
 if ((do_all || do_config)); then
@@ -793,3 +1032,14 @@ fi
 if ((do_all || do_dotfiles)); then
     install_dotfiles || echo_err "Failed to install dot files!"
 fi
+# Ruby-gems
+if ((do_all || do_gems)); then
+    install_gems || echo_err "Failed to install some gem files ($?)!"
+fi
+# Atom packages
+if ((do_all || do_apm)); then
+    install_apm_packages || echo_err "Failed to install some apm packages ($?)!"
+fi
+
+list_failures && exit 1
+exit

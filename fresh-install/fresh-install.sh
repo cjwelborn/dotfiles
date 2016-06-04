@@ -28,7 +28,12 @@ aptinstallcmd="sudo apt-get -y --ignore-missing --no-remove install"
 # Packages needed to run this script.
 # These should be in $appname-pkgs.txt, but just incase I'll try to install
 # them anyway after the initial apt-get commands.
-script_depends=("debianutils" "git")
+declare -A script_depends
+script_depends=(
+    #[executable]=parent-package-name
+    ["which"]="debianutils"
+    ["git"]="git"
+)
 
 filename_apm="$appdir/$appname-apm-pkgs.txt"
 filename_gems="$appdir/$appname-gems.txt"
@@ -208,6 +213,27 @@ function debug {
     ((debug_mode)) && echo_err "$@"
 }
 
+function debugf {
+    # Printf a debug message to stderr if debug_mode is set.
+    # shellcheck disable=SC2059
+    # ...using a variable in printf on purpose shellcheck.
+    ((debug_mode)) && printf "$@" 1>&2
+}
+
+function debug_depends {
+    # Check script dependencies and print some debug info about them.
+    local cmdname
+    local msgfmt
+    for cmdname in "${!script_depends[@]}"; do
+        if cmd_exists "$cmdname"; then
+            msgfmt="Dependency exists:  %12s (%s)\n"
+        else
+            msgfmt="Missing dependency: %12s (%s will be installed)\n"
+        fi
+        debugf "$msgfmt" "$cmdname" "${script_depends[$cmdname]}"
+    done
+}
+
 function debug_status {
     # Print status message about file operations, if debug_mode is set.
     ((debug_mode)) && status "$@"
@@ -356,13 +382,18 @@ function install_apt_depends {
     # Install all script dependencies.
     ((${#script_depends[@]})) || return 1
     local errs=0
+    local cmdname
     local pkgname
     local installcmd
     local installdesc
-    for pkgname in "${script_depends[@]}"; do
-        installcmd="$aptinstallcmd '$pkgname'"
+    for cmdname in "${!script_depends[@]}"; do
+        cmd_exists "$cmdname" && {
+            debug "Command dependency already exists: $cmdname"
+            continue
+        }
+        pkgname="${script_depends[$cmdname]}"
         installdesc="Installing script-dependency package: $pkgname"
-        run_cmd "$installcmd" "$installdesc" || let errs+=1
+        run_cmd "$aptinstallcmd '$pkgname'" "$installdesc" || let errs+=1
     done
     return $errs
 }
@@ -377,9 +408,8 @@ function install_apt_packages {
     local installcmd
     local installdesc
     for pkgname in "${pkgnames[@]}"; do
-        installcmd="$aptinstallcmd '$pkgname'"
         installdesc="Installing apt package: $pkgname"
-        run_cmd "$installcmd" "$installdesc" || let errs+=1
+        run_cmd "$aptinstallcmd '$pkgname'" "$installdesc" || let errs+=1
     done
     return $errs
 }
@@ -965,6 +995,8 @@ for arg; do
             nonflags+=("$arg")
     esac
 done
+
+debug_depends
 
 if ((do_find)); then
     ((do_findapm)) && {

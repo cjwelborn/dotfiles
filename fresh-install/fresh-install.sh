@@ -15,7 +15,8 @@ filename_pkgs="$appdir/fresh-install-pkgs.txt"
 filename_pip2_pkgs="$appdir/fresh-install-pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/fresh-install-pip3-pkgs.txt"
 required_files=("$filename_pkgs" "$filename_pip2_pkgs" "$filename_pip3_pkgs")
-
+# Location for third-party deb packages.
+debdir="${appdir}/debs"
 # This can be set with the --debug flag.
 debug_mode=0
 
@@ -290,6 +291,15 @@ function install_config {
     return 0
 }
 
+function install_debfiles {
+    # Install all .deb files in $appdir/debs/ (unless dry_run is set).
+    local debfiles=($(list_debfiles))
+    local debfile
+    for debfile in "${debfiles[@]}"; do
+        run_cmd "sudo dpkg -i \"$debfile\"" "Installing ${debfile##*/}..."
+    done
+}
+
 function install_dotfiles {
     # Install dotfiles files from github.com/cjwelborn/cj-dotfiles.git
     local repodir
@@ -337,6 +347,23 @@ function is_system_pip {
     # Package locations not starting with /home are considered system packages.
     [[ "$pkgloc" =~ ^/home ]] || return 0
     return 1
+}
+
+function list_debfiles {
+    # List deb files available in ./debs
+    if [[ ! -d "$debdir" ]]; then
+        echo_err "No debs directory found: $debdir"
+        return 1
+    fi
+    local debfiles=("$debdir"/*.deb)
+    if ((${#debfiles[@]} == 0)); then
+        echo_err "No .deb files in $debdir."
+        return 1
+    fi
+    local debfile
+    for debfile in "${debfiles[@]}"; do
+        printf "%s\n" "$debfile"
+    done
 }
 
 function list_packages {
@@ -389,8 +416,8 @@ function print_usage {
 
     Usage:
         $appscript -h | -v
-        $appscript [-l] [-l2] [-l3] [-D]
-        $appscript [-a] [-c] [-f] [-p2] [-p3] [-D]
+        $appscript [-l] [-l2] [-l3] [-lp] [-D]
+        $appscript [-a] [-c] [-f] [-p] [-p2] [-p3] [-D]
 
     Options:
         -a,--apt        : Install apt packages.
@@ -405,6 +432,8 @@ function print_usage {
                           Used to build this/other install scripts.
         -l3,--listpip3  : List installed pip 3 packages on this machine.
                           Used to build this/other install scripts.
+        -lp,--listdebs  : List all .deb files in ./debs.
+        -p,--debfiles   : Install ./debs/*.deb packages.
         -p2,--pip2      : Install pip2 packages.
         -p3,--pip3      : Install pip3 packages.
         -v,--version    : Show $appname version and exit.
@@ -451,9 +480,9 @@ function run_cmd {
     local cmd=$1
     local desc="${2:-Running $1}"
     ((${#desc} > 80)) && desc="${desc:0:80}..."
-    echo -e "\n\n$desc\n"
+    echo -e "\n$desc"
     if ((dry_run)); then
-        echo "$cmd"
+        echo "    $cmd"
     else
         eval "$cmd"
     fi
@@ -480,8 +509,10 @@ dry_run=0
 do_all=1
 do_apt=0
 do_config=0
+do_debfiles=0
 do_dotfiles=0
 do_list=0
+do_listdebs=0
 do_listpip2=0
 do_listpip3=0
 do_pip2=0
@@ -520,6 +551,13 @@ for arg; do
         "-l3"|"--listpip3" )
             do_listpip3=1
             ;;
+        "-lp"|"--listdebs" )
+            do_listdebs=1
+            ;;
+        "-p"|"--debfiles" )
+            do_debfiles=1
+            do_all=0
+            ;;
         "-p2"|"--pip2" )
             do_pip2=1
             do_all=0
@@ -540,10 +578,11 @@ for arg; do
     esac
 done
 
-if ((do_list || do_listpip2 || do_listpip3)); then
+if ((do_list || do_listdebs || do_listpip2 || do_listpip3)); then
     ((do_list)) && list_packages
     ((do_listpip2)) && list_pip "2"
     ((do_listpip3)) && list_pip "3"
+    ((do_listdebs)) && list_debfiles
     exit
 fi
 
@@ -551,7 +590,9 @@ if ((do_all || do_apt)); then
     run_cmd "sudo apt-get update" "Upgrading the packages list..."
     run_cmd "$(generate_apt_cmds)" "Installing apt packages..."
 fi
-
+if ((do_all || do_debfiles)); then
+    install_debfiles
+fi
 if ((do_all || do_pip2)); then
     run_cmd "$(generate_pip_cmds 2)" "Installing pip2 packages..."
 fi

@@ -1,4 +1,7 @@
+# These are python 3 package names.
+# These packages will be installed with pip3 by fresh-install.sh.
 # Packages marked with * are global packages, and require sudo to install.
+
 aiohttp
 *apt-xapian-index
 *apturl

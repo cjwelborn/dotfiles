@@ -1,3 +1,6 @@
+# These are apt/debian packages.
+# These packages will be apt-get installed by fresh-install.sh
+
 android-tools-adb
 android-tools-adbd
 android-tools-fastboot
@@ -13,6 +16,7 @@ cifs-utils
 clang
 cmake
 cowsay
+cppcheck
 curl
 docker-engine
 dosbox

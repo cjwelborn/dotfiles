@@ -5,24 +5,26 @@
 shopt -s dotglob
 shopt -s nullglob
 
+# App name should be filename-friendly.
 appname="fresh-install"
 appversion="0.1.0"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
 
-filename_pkgs="$appdir/fresh-install-pkgs.txt"
-filename_pip2_pkgs="$appdir/fresh-install-pip2-pkgs.txt"
-filename_pip3_pkgs="$appdir/fresh-install-pip3-pkgs.txt"
-filename_remote_debs="$appdir/fresh-install-remote-debs.txt"
+filename_pkgs="$appdir/$appname-pkgs.txt"
+filename_pip2_pkgs="$appdir/$appname-pip2-pkgs.txt"
+filename_pip3_pkgs="$appdir/$appname-pip3-pkgs.txt"
+filename_remote_debs="$appdir/$appname-remote-debs.txt"
 required_files=(
     "$filename_pkgs"
     "$filename_pip2_pkgs"
     "$filename_pip3_pkgs"
     "$filename_remote_debs"
 )
+
 # Location for third-party deb packages.
-debdir="${appdir}/debs"
+debdir="$appdir/debs"
 
 # This can be set with the --debug flag.
 debug_mode=0
@@ -196,7 +198,7 @@ function fail_usage {
 
 function generate_apt_cmds {
     # Generate an apt-get install command to install packages from
-    # fresh-install-pkgs.txt
+    # $appname-pkgs.txt
     if [[ ! -e "$filename_pkgs" ]]; then
         echo_err "Cannot install apt packages, missing $filename_pkgs."
         return 1
@@ -208,7 +210,7 @@ function generate_apt_cmds {
 
 function generate_pip_cmds {
     # Generate a pip install comand to install packages from
-    # fresh-install-pip$1.txt
+    # $appname-pip$1.txt
     local ver="${1:-3}"
     local varname="filename_pip${ver}_pkgs"
     local filename="${!varname}"
@@ -402,7 +404,7 @@ function install_dotfiles {
     fi
     local home="${HOME:-/home/$USER}"
     debug "Copying dot files..."
-    if ! copy_files "$repodir" "$home" '(fresh-install)|(README)|(^\.git$)'; then
+    if ! copy_files "$repodir" "$home" '('"$appname"')|(README)|(^\.git$)'; then
         echo_err "Failed to copy files: $repodir -> $home"
         return 1
     fi
@@ -470,7 +472,7 @@ function list_debfiles {
 }
 
 function list_debfiles_remote {
-    # List third-party deb files from fresh-install-remote_debs.txt
+    # List third-party deb files from $appname-remote_debs.txt
     local deblines
     if ! mapfile -t deblines <"$filename_remote_debs"; then
         echo_err "Failed to read remote deb file list: $filename_remote_debs"
@@ -504,7 +506,7 @@ function list_packages {
     done
     debug "Gathering installed apt packages ( ignoring" "${blacklisted[@]}" ")."
     echo "# These are apt/debian packages."
-    echo -e "# These packages will be apt-get installed by fresh-install.sh\n"
+    echo -e "# These packages will be apt-get installed by $appname.sh\n"
     # shellcheck disable=SC2016
     # ...single-quotes are intentional.
     comm -13 \
@@ -528,7 +530,7 @@ function list_pip {
     debug "Listing pip${ver} packages..."
     local pkgname
     echo "# These are python $ver package names."
-    echo "# These packages will be installed with pip${ver} by fresh-install.sh."
+    echo "# These packages will be installed with pip${ver} by $appname.sh."
     echo -e "# Packages marked with * are global packages, and require sudo to install.\n"
     for pkgname in $($exepath list | cut -d' ' -f1); do
         debug "Checking for system/local package: $pkgname"
@@ -566,6 +568,9 @@ function print_usage {
         -c,--config     : Install config from cj-config repo.
         -D,--debug      : Print some debug info while running.
         -d,--dryrun     : Don't do anything, just print the commands.
+                          Files will be downloaded to a temporary directory,
+                          but deleted soon after (or at least on reboot).
+                          Nothing will be installed to the system.
         -f,--dotfiles   : Install dot files from cj-dotfiles repo.
         -h,--help       : Show this message.
         -l,--list       : List installed packages on this machine.

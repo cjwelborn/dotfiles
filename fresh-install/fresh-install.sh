@@ -28,8 +28,7 @@ aptinstallcmd="sudo apt-get -y --ignore-missing --no-remove install"
 # Packages needed to run this script.
 # These should be in $appname-pkgs.txt, but just incase I'll try to install
 # them anyway after the initial apt-get commands.
-declare -A script_depends
-script_depends=(
+declare -A script_depends=(
     #[executable]=parent-package-name
     ["which"]="debianutils"
     ["git"]="git"

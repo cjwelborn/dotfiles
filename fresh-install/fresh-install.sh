@@ -14,9 +14,16 @@ appdir="${apppath%/*}"
 filename_pkgs="$appdir/fresh-install-pkgs.txt"
 filename_pip2_pkgs="$appdir/fresh-install-pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/fresh-install-pip3-pkgs.txt"
-required_files=("$filename_pkgs" "$filename_pip2_pkgs" "$filename_pip3_pkgs")
+filename_remote_debs="$appdir/fresh-install-remote-debs.txt"
+required_files=(
+    "$filename_pkgs"
+    "$filename_pip2_pkgs"
+    "$filename_pip3_pkgs"
+    "$filename_remote_debs"
+)
 # Location for third-party deb packages.
 debdir="${appdir}/debs"
+
 # This can be set with the --debug flag.
 debug_mode=0
 
@@ -46,7 +53,6 @@ function clone_repo {
     # Arguments:
     #   $1 : Repo url.
     #   $2 : Arguments for git.
-    local tmpdir
     local repo=$1
     shift
     local gitargs=("$@")
@@ -54,10 +60,8 @@ function clone_repo {
         echo_err "No repo given to clone_repo!"
         return 1
     fi
-    if ! tmpdir="$(mktemp -d -p /tmp "${appname/ /-}.XXX")"; then
-        echo_err "Failed to create temporary directory!"
-        return 1
-    fi
+    local tmpdir
+    tmpdir="$(make_temp_dir)" || return 1
     debug "Cloning repo '$repo' to $tmpdir."
     if ! git clone "${gitargs[@]}" "$repo" "$tmpdir"; then
         echo_err "Failed to clone repo: $repo"
@@ -221,10 +225,9 @@ function generate_pip_cmds {
     local normalpkgs
     local pkgname
     local sudopat='^\*'
-    local commentpat='^[ \t]+?#'
     while IFS=$'\n' read -r pkgname; do
         # Ignore comment lines.
-        [[ "$pkgname" =~ $commentpat ]] && continue
+        is_skipped_line "$pkgname" && continue
         if [[ "$pkgname" =~ $sudopat ]]; then
             sudopkgs=("${sudopkgs[@]}" "${pkgname:1}")
         else
@@ -253,6 +256,45 @@ function generate_pip_cmds {
         return 1
     fi
     echo "$finalcmd"
+}
+
+function get_deb_desc {
+    # Retrieve a short description for a .deb package.
+    local debfmt="\${package} v\${version} : \${description}\n"
+    local debdesc
+    if ! debdesc="$(dpkg-deb -W --showformat="$debfmt" "$1" 2>/dev/null)"; then
+        echo_err "Unable to retrieve version for: $1"
+        return 1
+    fi
+    local debline="${debdesc%%$'\n'*}"
+    ((${#debline} > 77)) && debline="${debline:0:77}..."
+    printf "%s" "$debline"
+}
+
+function get_deb_ver {
+    # Retrieve the version number for a .deb package.
+    if ! dpkg -f "$1" version 2>/dev/null; then
+        echo_err "Unable to retrieve version for: $1"
+        return 1
+    fi
+    return 0
+}
+
+function get_debfiles {
+    # Print deb files available in ./debs
+    if [[ ! -d "$debdir" ]]; then
+        echo_err "No debs directory found: $debdir"
+        return 1
+    fi
+    local debfiles=("$debdir"/*.deb)
+    if ((${#debfiles[@]} == 0)); then
+        echo_err "No .deb files in $debdir."
+        return 1
+    fi
+    local debfile
+    for debfile in "${debfiles[@]}"; do
+        printf "%s\n" "$debfile"
+    done
 }
 
 function install_config {
@@ -293,11 +335,62 @@ function install_config {
 
 function install_debfiles {
     # Install all .deb files in $appdir/debs/ (unless dry_run is set).
-    local debfiles=($(list_debfiles))
+    local debfiles=($(get_debfiles))
     local debfile
     for debfile in "${debfiles[@]}"; do
         run_cmd "sudo dpkg -i \"$debfile\"" "Installing ${debfile##*/}..."
     done
+}
+
+function install_debfiles_remote {
+    if [[ ! -e "$filename_remote_debs" ]]; then
+        echo_err "No remote deb file list: $filename_remote_debs"
+        return 1
+    fi
+    local dldir
+    if ! dldir="$(make_temp_dir)"; then
+        echo_err "Unable to create a temporary directory!"
+        return 1
+    fi
+    local deblines
+    if ! mapfile -t deblines <"$filename_remote_debs"; then
+        echo_err "Failed to read remote deb file list: $filename_remote_debs"
+        return 1
+    fi
+    local debline
+    local pkgname
+    local pkgurl
+    local pkgpath
+    local pkgmsgs
+    for debline in "${deblines[@]}"; do
+        is_skipped_line "$debline" && continue
+        pkgname="${debline%%=*}"
+        pkgurl="${debline##*=}"
+        if [[ -z "$pkgname" || -z "$pkgurl" || ! "$debline" =~ = ]]; then
+            echo_err \
+                "Bad config in ${filename_remote_debs}!" \
+                "\n    Expecting NAME=URL, got:\n        $debline"
+            continue
+        fi
+        pkgpath="${dldir}/${pkgname}.deb"
+        echo -e "Downloading $pkgname from: $pkgurl\n"
+        if ! wget "$pkgurl" -O "$pkgpath"; then
+            echo_err "Failed to download deb package from: $pkgurl"
+            continue
+        fi
+        if [[ ! -e "$pkgpath" ]]; then
+            echo_err "No package found after download: $pkgurl"
+            continue
+        fi
+        pkgmsgs=("Installing third-party package: ${pkgpath##*/}")
+        pkgmsgs+=("$(get_deb_desc "$pkgpath")")
+
+        run_cmd "sudo dpkg -i \"$pkgpath\"" "$(strjoin $'\n' "${pkgmsgs[@]}")"
+    done
+    if ! remove_file_sudo "$dldir" -r; then
+        echo_err "Failed to remove temporary directory: $dldir"
+        return 1
+    fi
 }
 
 function install_dotfiles {
@@ -331,6 +424,20 @@ function install_dotfiles {
     return 0
 }
 
+function is_skipped_line {
+    # Returns a success exit status if $1 is a line that should be skipped
+    # in all config files (comments, blank lines, etc.)
+    [[ -z "$1" ]] && return 0
+    # Regexp for matching comment lines.
+    local commentpat='^[ \t]+?#'
+    [[ "$1" =~ $commentpat ]] && return 0
+    # Regexp for matching whitespace only.
+    local whitespacepat='^[ \t]+$'
+    [[ "$1" =~ $whitespacepat ]] && return 0
+    # Line should not be skipped.
+    return 1
+}
+
 function is_system_pip {
     # Returns a success exit status if the pip package is found in the
     # global dir.
@@ -350,19 +457,40 @@ function is_system_pip {
 }
 
 function list_debfiles {
-    # List deb files available in ./debs
-    if [[ ! -d "$debdir" ]]; then
-        echo_err "No debs directory found: $debdir"
-        return 1
-    fi
-    local debfiles=("$debdir"/*.deb)
+    local debfiles=($(get_debfiles))
     if ((${#debfiles[@]} == 0)); then
-        echo_err "No .deb files in $debdir."
+        echo_err "No deb files to list!"
         return 1
     fi
     local debfile
+    echo -e "\nLocal debian packages:"
     for debfile in "${debfiles[@]}"; do
-        printf "%s\n" "$debfile"
+        printf "\n%s\n    %s\n" "$debfile" "$(get_deb_desc "$debfile")"
+    done
+}
+
+function list_debfiles_remote {
+    # List third-party deb files from fresh-install-remote_debs.txt
+    local deblines
+    if ! mapfile -t deblines <"$filename_remote_debs"; then
+        echo_err "Failed to read remote deb file list: $filename_remote_debs"
+        return 1
+    fi
+    local debline
+    local pkgname
+    local pkgurl
+    echo -e "\nRemote debian packages:"
+    for debline in "${deblines[@]}"; do
+        is_skipped_line "$debline" && continue
+        pkgname="${debline%%=*}"
+        pkgurl="${debline##*=}"
+        if [[ -z "$pkgname" || -z "$pkgurl" || ! "$debline" =~ = ]]; then
+            echo_err \
+                "Bad config in ${filename_remote_debs}!" \
+                "\n    Expecting NAME=URL, got:\n        $debline"
+            continue
+        fi
+        printf "\n%-20s: %s\n" "$pkgname" "$pkgurl"
     done
 }
 
@@ -375,6 +503,8 @@ function list_packages {
         blacklistpat="${blacklistpat}($pkgname)"
     done
     debug "Gathering installed apt packages ( ignoring" "${blacklisted[@]}" ")."
+    echo "# These are apt/debian packages."
+    echo -e "# These packages will be apt-get installed by fresh-install.sh\n"
     # shellcheck disable=SC2016
     # ...single-quotes are intentional.
     comm -13 \
@@ -397,7 +527,9 @@ function list_pip {
     fi
     debug "Listing pip${ver} packages..."
     local pkgname
-    echo "# Packages marked with * are global packages, and require sudo to install."
+    echo "# These are python $ver package names."
+    echo "# These packages will be installed with pip${ver} by fresh-install.sh."
+    echo -e "# Packages marked with * are global packages, and require sudo to install.\n"
     for pkgname in $($exepath list | cut -d' ' -f1); do
         debug "Checking for system/local package: $pkgname"
         if is_system_pip "$ver" "$pkgname"; then
@@ -406,6 +538,16 @@ function list_pip {
             echo "$pkgname"
         fi
     done
+}
+
+function make_temp_dir {
+    # Make a temporary directory and print it's path.
+    local tmproot="/tmp"
+    if ! mktemp -d -p "$tmproot" "${appname/ /-}.XXX"; then
+        echo_err "Unable to create a temporary directory in ${tmproot}!"
+        return 1
+    fi
+    return 0
 }
 
 function print_usage {
@@ -501,6 +643,13 @@ function status {
         printf "\n"
     fi
 }
+
+function strjoin {
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
 # Make sure we have at least one package list to work with.
 check_required_files || exit 1
 
@@ -582,26 +731,36 @@ if ((do_list || do_listdebs || do_listpip2 || do_listpip3)); then
     ((do_list)) && list_packages
     ((do_listpip2)) && list_pip "2"
     ((do_listpip3)) && list_pip "3"
-    ((do_listdebs)) && list_debfiles
+    ((do_listdebs)) && {
+        list_debfiles
+        list_debfiles_remote
+    }
     exit
 fi
 
+# System apt packages.
 if ((do_all || do_apt)); then
     run_cmd "sudo apt-get update" "Upgrading the packages list..."
     run_cmd "$(generate_apt_cmds)" "Installing apt packages..."
 fi
+# Local/remote apt packages.
 if ((do_all || do_debfiles)); then
-    install_debfiles
+    install_debfiles || "Failed to install third-party deb packages!"
+    install_debfiles_remote || "Failed to install remote third-party deb packages!"
 fi
+# Pip2 packages.
 if ((do_all || do_pip2)); then
     run_cmd "$(generate_pip_cmds 2)" "Installing pip2 packages..."
 fi
+# Pip3 packages.
 if ((do_all || do_pip3)); then
     run_cmd "$(generate_pip_cmds 3)" "Installing pip3 packages..."
 fi
+# App config files.
 if ((do_all || do_config)); then
     install_config || echo_err "Failed to install config files!"
 fi
+# Bash config/dotfiles.
 if ((do_all || do_dotfiles)); then
     install_dotfiles || echo_err "Failed to install dot files!"
 fi

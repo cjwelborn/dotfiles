@@ -20,6 +20,7 @@
 # Aliases:
 alias aptfix="sudo apt-get install -f" # try to fix broken packages...
 alias aptinstall="sudo apt-get install" # Shortcut to sudo apt-get install
+alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar" # BFG Repo-Cleaner for git.
 alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.

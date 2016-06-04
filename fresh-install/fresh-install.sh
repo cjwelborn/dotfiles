@@ -1,13 +1,21 @@
 #!/bin/bash
 
-# My install script, that installs packages that I use frequently.
+# My install script for new machines. Currently installs:
+#   apt packages, using apt-get (from a list.txt)
+#   apt package files, using dpkg (from ./debs/*.deb)
+#   remote apt package files, using wget and dpkg (from a list.txt).
+#   python 2 packages, using pip2 (from a list.txt) (uses sudo for sys pkgs)
+#   python 3 packages, using pip3 (from a list.txt) (uses sudo for sys pkgs)
+#   app config files (from github.com/cjwelborn/cj-config)
+#   bash config files (from github.com/cjwelborn/cj-dotfiles)
+#
 # -Christopher Welborn 05-31-2016
 shopt -s dotglob
 shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.1.0"
+appversion="0.1.1"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -135,7 +143,6 @@ function copy_files {
 
     for srcfilepath in "${dirfiles[@]}"; do
         srcfilename="${srcfilepath##*/}"
-        debug "Checking $srcfilename against $blacklistpat"
         [[ -z "$srcfilename" ]] && continue
         [[ -n "$blacklistpat" ]] && [[ "$srcfilename" =~ $blacklistpat ]] && continue
         if [[ -e "${dest}/$srcfilename" ]]; then
@@ -408,6 +415,13 @@ function install_dotfiles {
         echo_err "Failed to copy files: $repodir -> $home"
         return 1
     fi
+    if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
+        debug "Removing temporary repo dir: $repodir"
+        if ! remove_file_sudo "$repodir" -r; then
+            echo_err "Failed to remove temporary dir: $repodir"
+            return 1
+        fi
+    fi
     if [[ -e "${home}/bash.bashrc" ]]; then
         echo "Installing global bashrc."
         if [[ -e /etc/bash.bashrc ]]; then
@@ -416,13 +430,23 @@ function install_dotfiles {
         fi
         copy_file_sudo "${home}/bash.bashrc" "/etc/bash.bashrc"
     fi
-    if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
-        debug "Removing temporary repo dir: $repodir"
-        if ! remove_file_sudo "$repodir" -r; then
-            echo_err "Failed to remove temporary dir: $repodir"
-            return 1
+    local disablefiles=("${home}/.bashrc" "${home}/.profile")
+    local disablefile
+    for disablefile in "${disablefiles[@]}"; do
+        if [[ ! -e "$disablefile" ]]; then
+            if [[ -e "${disablefile}~" ]]; then
+                debug "Already backed up/disabled: $disablefile"
+            else
+                debug "Not found, not disabling: $disablefile"
+            fi
+            continue
         fi
-    fi
+        echo "Backing up existing config file to disable: $disablefile"
+        if ! copy_file "$disablefile" "${disablefile}~"; then
+            echo_err "Failed to disable existing file: $disablefile\n  It my interfere with new config files..."
+            continue
+        fi
+    done
     return 0
 }
 
@@ -641,9 +665,9 @@ function status {
     #   $1 : Operation (BackUp, Copy File, Copy Dir)
     #   $2 : File 1
     #   $3 : File 2
-    printf "%-15s: %-40s" "$1" "$2"
+    printf "%-15s: %-55s\n" "$1" "$2"
     if [[ -n "$3" ]]; then
-        printf " -> %s\n" "$3"
+        printf "%15s: %s\n" "->" "$3"
     else
         printf "\n"
     fi

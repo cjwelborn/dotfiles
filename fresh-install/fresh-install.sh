@@ -20,10 +20,13 @@ apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
 
+# Apt install command with safer args.
+aptinstallcmd="sudo apt-get -y --ignore-missing --no-remove install"
+
 # Packages needed to run this script.
 # These should be in $appname-pkgs.txt, but just incase I'll try to install
 # them anyway after the initial apt-get commands.
-script_depends=("git")
+script_depends=("debianutils" "git")
 
 filename_apm="$appdir/$appname-apm-pkgs.txt"
 filename_gems="$appdir/$appname-gems.txt"
@@ -355,7 +358,7 @@ function install_apt_depends {
     local installcmd
     local installdesc
     for pkgname in "${script_depends[@]}"; do
-        installcmd="sudo apt-get -y --ignore-missing install '$pkgname'"
+        installcmd="$aptinstallcmd '$pkgname'"
         installdesc="Installing script-dependency package: $pkgname"
         run_cmd "$installcmd" "$installdesc" || let errs+=1
     done
@@ -372,7 +375,7 @@ function install_apt_packages {
     local installcmd
     local installdesc
     for pkgname in "${pkgnames[@]}"; do
-        installcmd="sudo apt-get -y --ignore-missing install '$pkgname'"
+        installcmd="$aptinstallcmd '$pkgname'"
         installdesc="Installing apt package: $pkgname"
         run_cmd "$installcmd" "$installdesc" || let errs+=1
     done

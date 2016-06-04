@@ -8,6 +8,8 @@
 #   python 3 packages, using pip3 (from a list.txt) (uses sudo for sys pkgs)
 #   app config files (from github.com/cjwelborn/cj-config)
 #   bash config files (from github.com/cjwelborn/cj-dotfiles)
+#   ruby gems (from a list.txt)
+#   atom packages (from a list.txt)
 #
 # -Christopher Welborn 05-31-2016
 shopt -s dotglob
@@ -15,7 +17,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.1.1"
+appversion="0.2.0"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"

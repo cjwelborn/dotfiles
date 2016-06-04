@@ -6,7 +6,7 @@ shopt -s dotglob
 shopt -s nullglob
 
 appname="fresh-install"
-appversion="0.0.1"
+appversion="0.1.0"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"

@@ -1,0 +1,14 @@
+# These are relative executable names and git repo urls.
+# After cloning to ~/clones, the executable will be symlinked to
+# ~/.local/bin by fresh-install.sh.
+
+# The format is: relative-executable-path-in-repo=repo-url
+
+# Rust linting tool, used by editor plugins.
+target/release/cargo-check=https://github.com/rsolomo/cargo-check.git
+# Rust autocomplete tool, used by editor plugins.
+target/release/racer=https://github.com/phildawes/racer.git
+# A handy cmdline google search tool.
+googler=https://github.com/jarun/googler.git
+# Creates spark lines in the terminal.
+spark=https://github.com/holman/spark.git

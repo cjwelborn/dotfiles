@@ -17,7 +17,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.1"
+appversion="0.2.2"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -36,6 +36,7 @@ declare -A script_depends=(
 
 filename_apm="$appdir/$appname-apm-pkgs.txt"
 filename_gems="$appdir/$appname-gems.txt"
+filename_git_clones="$appdir/$appname-clones.txt"
 filename_pkgs="$appdir/$appname-pkgs.txt"
 filename_pip2_pkgs="$appdir/$appname-pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/$appname-pip3-pkgs.txt"
@@ -80,6 +81,34 @@ function check_required_files {
 }
 
 function clone_repo {
+    # Clone a repo into a directory, and print the directory.
+    # Arguments:
+    #   $1    : Repo url.
+    #   $2    : Destination directory.
+    #   $3... : Git args.
+    local repo=$1
+    local destdir=$2
+    shift
+    shift
+    if [[ -z "$repo" || -z "$destdir" ]]; then
+        echo_err "Expected \$repo and \$destdir for clone_repo!"
+        return 1
+    elif [[ ! -d "$destdir" ]]; then
+        echo_err "Destination directory does not exist: $destdir"
+        return 1
+    fi
+
+    local gitargs=("$@")
+
+    debug "Cloning repo '$repo' to $destdir."
+    if ! git clone "${gitargs[@]}" "$repo" "$destdir"; then
+        echo_err "Failed to clone repo: $repo"
+        return 1
+    fi
+    printf "%s" "$destdir"
+}
+
+function clone_repo_tmp {
     # Clone a repo into a temporary directory, and print the directory.
     # Arguments:
     #   $1 : Repo url.
@@ -88,17 +117,12 @@ function clone_repo {
     shift
     local gitargs=("$@")
     if [[ -z "$repo" ]]; then
-        echo_err "No repo given to clone_repo!"
+        echo_err "No repo given to clone_repo_tmp!"
         return 1
     fi
     local tmpdir
     tmpdir="$(make_temp_dir)" || return 1
-    debug "Cloning repo '$repo' to $tmpdir."
-    if ! git clone "${gitargs[@]}" "$repo" "$tmpdir"; then
-        echo_err "Failed to clone repo: $repo"
-        return 1
-    fi
-    printf "%s" "$tmpdir"
+    clone_repo "${gitargs[@]}" "$repo" "$tmpdir"
 }
 
 function cmd_exists {
@@ -416,7 +440,7 @@ function install_apt_packages {
 function install_config {
     # Install config files from github.com/cjwelborn/cj-config.git
     local repodir
-    if ! repodir="$(clone_repo "https://github.com/cjwelborn/cj-config.git")"; then
+    if ! repodir="$(clone_repo_tmp "https://github.com/cjwelborn/cj-config.git")"; then
         echo_err "Repo clone failed, cannot install config."
         return 1
     else
@@ -465,18 +489,15 @@ function install_debfiles {
 }
 
 function install_debfiles_remote {
-    if [[ ! -e "$filename_remote_debs" ]]; then
-        echo_err "No remote deb file list: $filename_remote_debs"
-        return 1
-    fi
+    # Install remote debian packages from $appname-remote-debs.txt
+    local deblines
+    deblines=($(list_file "$filename_remote_debs")) || return 1
+    ((${#deblines[@]})) || return 1
     local dldir
     if ! dldir="$(make_temp_dir)"; then
         echo_err "Unable to create a temporary directory!"
         return 1
     fi
-    local deblines
-    deblines=($(list_file "$filename_remote_debs")) || return 1
-    ((${#deblines[@]})) || return 1
     local debline
     local pkgname
     local pkgurl
@@ -522,7 +543,7 @@ function install_debfiles_remote {
 function install_dotfiles {
     # Install dotfiles files from github.com/cjwelborn/cj-dotfiles.git
     local repodir
-    if ! repodir="$(clone_repo "https://github.com/cjwelborn/cj-dotfiles.git")"; then
+    if ! repodir="$(clone_repo_tmp "https://github.com/cjwelborn/cj-dotfiles.git")"; then
         echo_err "Repo clone failed, cannot install dot files."
         return 1
     fi
@@ -579,6 +600,70 @@ function install_gems {
     local errs=0
     for gemname in "${gemnames[@]}"; do
         run_cmd "gem install $gemname" "Installing gem: $gemname" || let errs+=1
+    done
+    return $errs
+}
+
+function install_git_clone {
+    # Clone a repo into ~/clones, and symlink it's main executable to
+    # ~/.local/bin.
+    # Arguments:
+    #   $1    : relative executable path (relative to git repo)
+    #   $2    : repo url
+    #   $3... : git args
+    local relexepath=$1
+    local repourl=$2
+    shift
+    shift
+    if [[ -z "$relexepath" || -z "$repourl" ]]; then
+        echo_err "Expected \$relexepath and \$repourl in install_git_repo!"
+        return 1
+    fi
+    local exename="${relexepath##*/}"
+    local gitargs=("$@")
+    local clonedir=~/clones
+    make_dir "$clonedir" || return 1
+    local homebin=~/.local/bin
+    make_dir "$homebin" || return 1
+    local repodir
+    if ((dry_run)); then
+        echo "    clone_repo \"$repourl\" \"$clonedir/$exename\" ${gitargs[*]}"
+        echo "    ln -s \$exepath $homebin/$exename"
+        echo_err "Dry run, cannot continue with repo cloning: $repourl"
+        return 1
+    fi
+    repodir="$(clone_repo "$repourl" "$clonedir/$exename" "${gitargs[@]}")" || return 1
+    local exepath="$repodir/$relexepath"
+    if [[ ! -e "$exepath" ]]; then
+        echo_err "Missing executable after cloning: $exepath"
+        return 1
+    fi
+    if ! ln -s "$exepath" "$homebin/$exename"; then
+        echo_err "Failed to create symlink: $homebin/$exename"
+        return 1
+    fi
+    return 0
+}
+
+function install_git_clones {
+    # Install all git repo/executables from $appname-clones.txt
+    local gitlines
+    gitlines=($(list_file "$filename_git_clones")) || return 1
+    ((${#gitlines[@]})) || return 1
+    local gitline
+    local relexepath
+    local repourl
+    local errs=0
+    for gitline in "${gitlines[@]}"; do
+        relexepath="${gitline%%=*}"
+        repourl="${gitline##*=}"
+        if [[ -z "$relexepath" || -z "$repourl" || ! "$gitline" =~ = ]]; then
+            echo_err \
+                "Bad config in ${filename_git_clones}!" \
+                "\n    Expecting RELEXEPATH=REPOURL, got:\n        $gitline"
+            continue
+        fi
+        install_git_clone "$relexepath" "$repourl" || let errs+=1
     done
     return $errs
 }
@@ -743,6 +828,20 @@ function list_file {
     done
 }
 
+function make_dir {
+    # Make a directory if it doesn't exist alredy, unless dry_run is set.
+    local dirpath=$1
+    if [[ -z "$dirpath" ]]; then
+        echo_err "Expected \$dirpath in make_dir!"
+        return 1
+    fi
+    if [[ -d "$dirpath" ]]; then
+        debug "Directory already exists: $dirpath"
+        return 0
+    fi
+    run_cmd "mkdir -p '$dirpath'" "Creating directory: $dirpath"
+}
+
 function make_temp_dir {
     # Make a temporary directory and print it's path.
     local tmproot="/tmp"
@@ -762,8 +861,8 @@ function print_usage {
     Usage:
         $appscript -h | -v
         $appscript [-f2] [-f3] [-fp] [-D]
-        $appscript [-l] [-l2] [-l3] [-ld] [-lg] [-D]
-        $appscript [-a] [-ap] [-c] [-f] [-g] [-p] [-p2] [-p3] [-D]
+        $appscript [-l] [-l2] [-l3] [-lc] [-ld] [-lg] [-D]
+        $appscript [-a] [-ap] [-c] [-f] [-g] [-gc] [-p] [-p2] [-p3] [-D]
 
     Options:
         -a,--apt            : Install apt packages.
@@ -785,11 +884,13 @@ function print_usage {
         -fp,--findpackages  : List installed packages on this machine.
                               Used to build $filename_pkgs.
         -g,--gems           : Install ruby gem packages.
+        -gc,--gitclones     : Install git clones.
         -h,--help           : Show this message.
         -l,--list           : List apt packages in $filename_pkgs.
         -l2,--listpip2      : List pip2 packages in $filename_pip2_pkgs.
         -l3,--listpip3      : List pip3 packages in $filename_pip3_pkgs.
         -la,--listapm       : List apm packages in $filename_apm.
+        -lc,--listclones    : List git clones in $filename_git_clones.
         -ld,--listdebs      : List all .deb files in ./debs, and remote
                               packages in $filename_remote_debs.
         -lg,--listgems      : List gem package names in $filename_gems.
@@ -889,9 +990,11 @@ do_findpackages=0
 do_findpip2=0
 do_findpip3=0
 do_gems=0
+do_gitclones=0
 do_listing=0
 do_list=0
 do_listapm=0
+do_listclones=0
 do_listdebs=0
 do_listgems=0
 do_listpip2=0
@@ -943,6 +1046,10 @@ for arg; do
             do_gems=1
             do_all=0
             ;;
+        "-gc"|"--gitclones" )
+            do_gitclones=1
+            do_all=0
+            ;;
         "-h"|"--help" )
             print_usage ""
             exit 0
@@ -962,6 +1069,10 @@ for arg; do
         "-la"|"--listapm" )
             do_listing=1
             do_listapm=1
+            ;;
+        "-lc"|"--listclones" )
+            do_listing=1
+            do_listclones=1
             ;;
         "-lg"|"--listgems" )
             do_listing=1
@@ -1020,6 +1131,9 @@ elif ((do_listing)); then
     ((do_listapm)) && {
         list_file "$filename_apm" || echo_err "Failed to list apm packages."
     }
+    ((do_listclones)) && {
+        list_file "$filename_git_clones" || echo_err "Failed to list git clones."
+    }
     ((do_listdebs)) && {
         list_debfiles || echo_err "Failed to list .deb files."
         list_debfiles_remote || echo_err "Failed to list remote .deb files."
@@ -1044,21 +1158,33 @@ check_required_files || exit 1
 # System apt packages.
 if ((do_all || do_apt)); then
     run_cmd "sudo apt-get update" "Upgrading the packages list..."
-    install_apt_packages || echo_err "Failed to install some apt packages ($?)\n    ...this may be okay though."
-    install_apt_depends || echo_err "Failed to install some script dependencies ($?)\n    ...future installs may fail."
+    install_apt_packages || {
+        echo_err "Failed to install some apt packages ($?)\n    ...this may be okay though."
+    }
+    install_apt_depends || {
+        echo_err "Failed to install some script dependencies ($?)\n    ...future installs may fail."
+    }
 fi
 # Local/remote apt packages.
 if ((do_all || do_debfiles)); then
-    install_debfiles || echo_err "Failed to install third-party deb packages (~$?)!"
-    install_debfiles_remote || echo_err "Failed to install remote third-party deb packages (~$?)!"
+    install_debfiles || {
+        echo_err "Failed to install third-party deb packages (~$?)!"
+    }
+    install_debfiles_remote || {
+        echo_err "Failed to install remote third-party deb packages (~$?)!"
+    }
 fi
 # Pip2 packages.
 if ((do_all || do_pip2)); then
-    install_pip_packages "2" || echo_err "Failed to install some pip2 packages ($?)\n    ...this may be okay though."
+    install_pip_packages "2" || {
+        echo_err "Failed to install some pip2 packages ($?)\n    ...this may be okay though."
+    }
 fi
 # Pip3 packages.
 if ((do_all || do_pip3)); then
-    install_pip_packages "3" || echo_err "Failed to install some pip3 packages ($?)\n    ...this may be okay though."
+    install_pip_packages "3" || {
+        echo_err "Failed to install some pip3 packages ($?)\n    ...this may be okay though."
+    }
 fi
 # App config files.
 if ((do_all || do_config)); then
@@ -1076,6 +1202,25 @@ fi
 if ((do_all || do_apm)); then
     install_apm_packages || echo_err "Failed to install some apm packages ($?)!"
 fi
+# Git clones with executables.
+if ((do_all || do_gitclones)); then
+    install_git_clones || {
+        echo_err "Failed to install some git clone executables ($?)!"
+        ((dry_run)) && echo_err "...git clones will always fail on a dry run."
+    }
+fi
+# Pre-compiled binaries.
+# Add a note about pre-compiled binaries that fresh-install doesn't handle yet.
+declare -A compiledexes=(
+    [hub]="https://github.com/github/hub/releases/download/v2.2.3/hub-linux-amd64-2.2.3.tgz"
+    [cling]="https://root.cern.ch/download/cling//cling_2016-05-29_ubuntu14.tar.bz2"
+)
+printf "\nThere are still some pre-compiled binaries missing!\n"
+printf "You can download them from here:\n"
+for exename in "${!compiledexes[@]}"; do
+    printf "    %-16s: %s\n" "$exename" "${compiledexes[$exename]}"
+done
+
 
 list_failures && exit 1
 exit

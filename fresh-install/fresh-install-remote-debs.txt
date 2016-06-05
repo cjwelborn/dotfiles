@@ -1,5 +1,7 @@
 # This file contains download urls for debian packages.
 # These packages will be downloaded and installed by fresh-install.sh.
 
+# The format is: name=url-for-.deb-download
+
 # Atom editor from atom.io.
 Atom=https://atom.io/download/deb

@@ -446,34 +446,49 @@ function install_apt_packages {
 
 function install_config {
     # Install config files from github.com/cjwelborn/cj-config.git
-    local repodir
-    if ! repodir="$(clone_repo_tmp "https://github.com/cjwelborn/cj-config.git")"; then
+    local repodir=~/clones/cj-config
+    if ((dry_run)); then
+        echo "Creating real directory for dry run."
+        mkdir -p "$repodir" || return 1
+    else
+        make_dir "$repodir" || return 1
+    fi
+    if ! repodir="$(clone_repo "https://github.com/cjwelborn/cj-config.git" "$repodir")"; then
         echo_err "Repo clone failed, cannot install config."
+        [[ -n "$repodir" && -e "$repodir" ]] && rm -r "$repodir"
         return 1
     else
         debug "Changing to repo directory: $repodir"
         if ! cd "$repodir"; then
             echo_err "Failed to cd into repo: $repodir"
+            [[ -n "$repodir" && -e "$repodir" ]] && rm -r "$repodir"
             return 1
         fi
         debug "Updating config submodules..."
         if ! git submodule update --init; then
             echo_err "Failed to update submodules!"
             cd -
+            [[ -n "$repodir" && -e "$repodir" ]] && rm -r "$repodir"
             return 1
         fi
         cd -
     fi
     local home="${HOME:-/home/$USER}"
     debug "Copying config files..."
-    if ! copy_files "$repodir" "$home" "(.gitmodules)|(README)|(^\.git$)"; then
-        echo_err "Failed to copy files: $repodir -> $home"
+    if ! symlink_files "$repodir" "$home" "(.gitmodules)|(README)|(^\.git$)"; then
+        echo_err "Failed to symlink files: $repodir -> $home"
         return 1
     fi
-    if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
-        debug "Removing temporary repo dir: $repodir"
-        if ! remove_file_sudo "$repodir" -r; then
-            echo_err "Failed to remove temporary dir: $repodir"
+    if ((dry_run)); then
+        # Remove clone dir on dry runs..
+        if [[ -n "$repodir" && -e "$repodir" ]]; then
+            debug "Removing temporary repo dir: $repodir"
+            if ! sudo rm -r "$repodir"; then
+                echo_err "Failed to remove temporary dir: $repodir"
+                return 1
+            fi
+        else
+            echo_err "Can't find repo dir: $repodir"
             return 1
         fi
     fi
@@ -553,7 +568,7 @@ function install_dotfiles {
     local srcdir="$appdir"/..
     debug "Copying dot files from $srcdir ..."
     if ! symlink_files "$srcdir" "$home" '('"$appname"')|(README)|(^\.git$)'; then
-        echo_err "Failed to copy files: $srcdir -> $home"
+        echo_err "Failed to symlink files: $srcdir -> $home"
         return 1
     fi
     if [[ -e "${srcdir}/bash.bashrc" ]]; then
@@ -618,7 +633,7 @@ function install_git_clone {
     local exename="${relexepath##*/}"
     local gitargs=("$@")
     local clonedir=~/clones
-    make_dir "$clonedir" || return 1
+    make_dir "$clonedir/$exename" || return 1
     local homebin=~/.local/bin
     make_dir "$homebin" || return 1
     local repodir

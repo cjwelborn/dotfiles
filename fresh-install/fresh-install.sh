@@ -17,7 +17,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.2"
+appversion="0.2.4"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -189,46 +189,53 @@ function copy_files {
     local dirfiles=("$src"/*)
 
     if ((${#dirfiles[@]} == 0)); then
-        echo_err "No files to install in $repodir."
+        echo_err "No files to install in $src."
         return 1
     fi
     local srcfilepath
     local srcfilename
-
+    local errs=0
     for srcfilepath in "${dirfiles[@]}"; do
         srcfilename="${srcfilepath##*/}"
         [[ -z "$srcfilename" ]] && continue
         [[ -n "$blacklistpat" ]] && [[ "$srcfilename" =~ $blacklistpat ]] && continue
         if [[ -e "${dest}/$srcfilename" ]]; then
             if [[ -f "$srcfilepath" ]]; then
-                if ! copy_file "${home}/${srcfilename}" "${home}/${srcfilename}~"; then
-                    echo_err "Failed to backup file: ${home}/${srcfilename}"
+                if ! copy_file "${dest}/${srcfilename}" "${dest}/${srcfilename}~"; then
+                    echo_err "Failed to backup file: ${dest}/${srcfilename}"
                     echo_err "    I will not overwrite the existing file."
+                    let errs+=1
                     continue
                 fi
             elif [[ -d "$srcfilepath" ]]; then
-                if ! copy_file "${home}/${srcfilename}" "${home}/${srcfilename}~" -r; then
-                    echo_err "Failed to backup directory: ${home}/${srcfilename}"
+                if ! copy_file "${dest}/${srcfilename}" "${dest}/${srcfilename}~" -r; then
+                    echo_err "Failed to backup directory: ${dest}/${srcfilename}"
                     echo_err "    I will not overwrite the existing directory."
+                    let errs+=1
                     continue
                 fi
             fi
         fi
         if [[ -f "$srcfilepath" ]]; then
-            if ! copy_file "$srcfilepath" "${home}/${srcfilename}"; then
-                echo_err "Failed to copy file: ${srcfilepath} -> ${home}/${srcfilename}"
+            if ! copy_file "$srcfilepath" "${dest}/${srcfilename}"; then
+                echo_err "Failed to copy file: ${srcfilepath} -> ${dest}/${srcfilename}"
+                let errs+=1
+                continue
             fi
         elif [[ -d "$srcfilepath" ]]; then
-            if ! copy_file "$srcfilepath" "${home}/${srcfilename}" -r; then
-                echo_err "Failed to copy directory: ${srcfilepath} -> ${home}/${srcfilename}"
+            if ! copy_file "$srcfilepath" "${dest}/${srcfilename}" -r; then
+                echo_err "Failed to copy directory: ${srcfilepath} -> ${dest}/${srcfilename}"
+                let errs+=1
+                continue
             fi
         else
-            echo_err "Unknown file type: $srcfilepath"
+            echo_err "File does not exist: $srcfilepath"
+            let errs+=1
             continue
         fi
     done
 
-    return 0
+    return $errs
 }
 
 function debug {
@@ -541,32 +548,21 @@ function install_debfiles_remote {
 }
 
 function install_dotfiles {
-    # Install dotfiles files from github.com/cjwelborn/cj-dotfiles.git
-    local repodir
-    if ! repodir="$(clone_repo_tmp "https://github.com/cjwelborn/cj-dotfiles.git")"; then
-        echo_err "Repo clone failed, cannot install dot files."
-        return 1
-    fi
+    # Install dotfiles files from $appdir/../
     local home="${HOME:-/home/$USER}"
-    debug "Copying dot files..."
-    if ! copy_files "$repodir" "$home" '('"$appname"')|(README)|(^\.git$)'; then
-        echo_err "Failed to copy files: $repodir -> $home"
+    local srcdir="$appdir"/..
+    debug "Copying dot files from $srcdir ..."
+    if ! symlink_files "$srcdir" "$home" '('"$appname"')|(README)|(^\.git$)'; then
+        echo_err "Failed to copy files: $srcdir -> $home"
         return 1
     fi
-    if [[ -n "$repodir" ]] && [[ "$repodir" =~ $appname ]] && [[ -e "$repodir" ]]; then
-        debug "Removing temporary repo dir: $repodir"
-        if ! remove_file_sudo "$repodir" -r; then
-            echo_err "Failed to remove temporary dir: $repodir"
-            return 1
-        fi
-    fi
-    if [[ -e "${home}/bash.bashrc" ]]; then
+    if [[ -e "${srcdir}/bash.bashrc" ]]; then
         echo "Installing global bashrc."
         if [[ -e /etc/bash.bashrc ]]; then
             echo "Backing up global bashrc."
-            copy_file_sudo '/etc/bash.bashrc' '/etc/bash.bashrc~'
+            move_file_sudo '/etc/bash.bashrc' '/etc/bash.bashrc~'
         fi
-        copy_file_sudo "${home}/bash.bashrc" "/etc/bash.bashrc"
+        symlink_file_sudo "${srcdir}/bash.bashrc" "/etc/bash.bashrc"
     fi
     local disablefiles=("${home}/.bashrc" "${home}/.profile")
     local disablefile
@@ -580,7 +576,7 @@ function install_dotfiles {
             continue
         fi
         echo "Backing up existing config file to disable: $disablefile"
-        if ! copy_file "$disablefile" "${disablefile}~"; then
+        if ! move_file "$disablefile" "${disablefile}~"; then
             echo_err "Failed to disable existing file: $disablefile\n  It my interfere with new config files..."
             continue
         fi
@@ -852,6 +848,40 @@ function make_temp_dir {
     return 0
 }
 
+function move_file {
+    # Move a file, unless dry_run is set.
+    local src=$1
+    local dest=$2
+    shift; shift
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for move_file!"
+        return 1
+    fi
+    if ((dry_run)); then
+        status "mv $*" "$src" "$dest"
+    else
+        debug_status "mv $*" "$src" "$dest"
+        mv "$@" "$src" "$dest"
+    fi
+}
+
+function move_file_sudo {
+    # Move a file using sudo, unless dry_run is set.
+    local src=$1
+    local dest=$2
+    shift; shift
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for move_file!"
+        return 1
+    fi
+    if ((dry_run)); then
+        status "sudo mv $*" "$src" "$dest"
+    else
+        debug_status "sudo mv $*" "$src" "$dest"
+        sudo mv "$@" "$src" "$dest"
+    fi
+}
+
 function print_usage {
     # Show usage reason if first arg is available.
     [[ -n "$1" ]] && echo_err "\n$1\n"
@@ -860,6 +890,7 @@ function print_usage {
 
     Usage:
         $appscript -h | -v
+        $appscript -u [-D]
         $appscript [-f2] [-f3] [-fp] [-D]
         $appscript [-l] [-l2] [-l3] [-lc] [-ld] [-lg] [-D]
         $appscript [-a] [-ap] [-c] [-f] [-g] [-gc] [-p] [-p2] [-p3] [-D]
@@ -897,6 +928,8 @@ function print_usage {
         -p,--debfiles       : Install ./debs/*.deb packages.
         -p2,--pip2          : Install pip2 packages.
         -p3,--pip3          : Install pip3 packages.
+        -u,--update         : Update package lists with packages from this
+                              machine.
         -v,--version        : Show $appname version and exit.
     "
 }
@@ -975,6 +1008,106 @@ function strjoin {
     echo "$*"
 }
 
+function symlink_file {
+    # Symlink a file, unless dry_run is set.
+    local src=$1
+    local dest=$2
+    shift; shift
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for symlink_file!"
+        return 1
+    fi
+    if ((dry_run)); then
+        status "ln $*" "$src" "$dest"
+    else
+        debug_status "ln $*" "$src" "$dest"
+        ln -s "$@" "$src" "$dest"
+    fi
+}
+
+function symlink_file_sudo {
+    # Symlink a file, unless dry_run is set.
+    local src=$1
+    local dest=$2
+    shift; shift
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for symlink_file!"
+        return 1
+    fi
+    if ((dry_run)); then
+        status "sudo ln $*" "$src" "$dest"
+    else
+        debug_status "sudo ln $*" "$src" "$dest"
+        sudo ln -s "$@" "$src" "$dest"
+    fi
+}
+
+function symlink_files {
+    # Safely symlink files from one directory to another.
+    # Arguments:
+    #   $1 : Source directory.
+    #   $2 : Destination directory.
+    #   $3 : Blacklist pattern, optional.
+    local src=$1
+    local dest=$2
+    local blacklistpat=$3
+
+    if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
+        echo_err "Expected \$src and \$dest for copy_files!"
+        return 1
+    fi
+    local dirfiles=("$src"/*)
+
+    if ((${#dirfiles[@]} == 0)); then
+        echo_err "No files to install in $src."
+        return 1
+    fi
+    local srcfilepath
+    local srcfilename
+    local errs=0
+    for srcfilepath in "${dirfiles[@]}"; do
+        srcfilename="${srcfilepath##*/}"
+        [[ -z "$srcfilename" ]] && continue
+        [[ -n "$blacklistpat" ]] && [[ "$srcfilename" =~ $blacklistpat ]] && continue
+        if [[ -e "${dest}/$srcfilename" ]]; then
+            # Backup existing file.
+            if ! move_file "${dest}/${srcfilename}" "${dest}/${srcfilename}~"; then
+                echo_err "Failed to move existing file/dir: ${dest}/${srcfilename}"
+                let errs+=1
+                continue
+            fi
+        fi
+        if [[ -e "$srcfilepath" ]]; then
+            if ! symlink_file "$srcfilepath" "${dest}/${srcfilename}"; then
+                echo_err "Failed to symlink file: ${srcfilepath} -> ${dest}/${srcfilename}"
+                let errs+=1
+                continue
+            fi
+        else
+            echo_err "File does not exist: $srcfilepath"
+            let errs+=1
+            continue
+        fi
+    done
+
+    return $errs
+}
+
+
+function update_pkg_lists {
+    # Update the $appname-<pkg>.txt files with packages from this machine.
+    local errs=0
+    printf "\nUpdating packages list...\n"
+    find_packages > "$filename_pkgs" || let errs+=1
+    printf "\nUpdating pip2 packages list...\n    ...this may take a while.\n"
+    find_pip "2" > "$filename_pip2_pkgs" || let errs+=1
+    printf "\nUpdating pip3 packages list...\n    ...this may take a while.\n"
+    find_pip "3" > "$filename_pip3_pkgs" || let errs+=1
+    printf "\nUpdating apm packages list...\n"
+    find_apm_packages > "$filename_apm" || let errs+=1
+    return $errs
+}
+
 # Switches for script actions, set by arg parsing.
 declare -a nonflags
 dry_run=0
@@ -1001,6 +1134,7 @@ do_listpip2=0
 do_listpip3=0
 do_pip2=0
 do_pip3=0
+do_update=0
 
 for arg; do
     case "$arg" in
@@ -1094,6 +1228,9 @@ for arg; do
             do_pip3=1
             do_all=0
             ;;
+        "-u"|"--update" )
+            do_update=1
+            ;;
         "-v"|"--version" )
             echo -e "$appname v. $appversion\n"
             exit 0
@@ -1108,7 +1245,13 @@ done
 
 debug_depends
 
-if ((do_find)); then
+if ((do_update)); then
+    update_pkg_lists || {
+        echo_err "Failed to update some package lists ($?)."
+        exit 1
+    }
+    exit 0
+elif ((do_find)); then
     ((do_findapm)) && {
         find_apm_packages || echo_err "Failed to find apm packages."
     }
@@ -1210,17 +1353,18 @@ if ((do_all || do_gitclones)); then
     }
 fi
 # Pre-compiled binaries.
-# Add a note about pre-compiled binaries that fresh-install doesn't handle yet.
-declare -A compiledexes=(
-    [hub]="https://github.com/github/hub/releases/download/v2.2.3/hub-linux-amd64-2.2.3.tgz"
-    [cling]="https://root.cern.ch/download/cling//cling_2016-05-29_ubuntu14.tar.bz2"
-)
-printf "\nThere are still some pre-compiled binaries missing!\n"
-printf "You can download them from here:\n"
-for exename in "${!compiledexes[@]}"; do
-    printf "    %-16s: %s\n" "$exename" "${compiledexes[$exename]}"
-done
-
+if ((do_all)); then
+    # Add a note about pre-compiled binaries that fresh-install doesn't handle yet.
+    declare -A compiledexes=(
+        [hub]="https://github.com/github/hub/releases/download/v2.2.3/hub-linux-amd64-2.2.3.tgz"
+        [cling]="https://root.cern.ch/download/cling//cling_2016-05-29_ubuntu14.tar.bz2"
+    )
+    printf "\nThere are still some pre-compiled binaries missing!\n"
+    printf "You can download them from here:\n"
+    for exename in "${!compiledexes[@]}"; do
+        printf "    %-16s: %s\n" "$exename" "${compiledexes[$exename]}"
+    done
+fi
 
 list_failures && exit 1
 exit

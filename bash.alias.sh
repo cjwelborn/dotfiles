@@ -25,6 +25,7 @@ alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias colr="python3 -m colr" # Shortcut to python3 -m colr.
+alias dirs="dirs -v" # Vertical directory listing for 'dirs', with indexes.
 alias exal="exa -abghHliS" # Run exa with a long, detailed view.
 alias greenv="green -vv" # Run green with -vv for more verbosity.
 alias grep="grep -E --color=always" # use colors and regex for grep always
@@ -62,53 +63,6 @@ alias wpsftp="sftp cjwelborn@cjwelborn.webfactional.com" # Opens SFTP session fo
 alias wpssh="ssh -X cjwelborn@cjwelborn.webfactional.com" # Opens SSH session on welbornprod.com
 
 # Functions:
-function addrequirement()
-{
-	# Add a python lib to requirements.txt. If it does not exist, confirmation is needed.
-	if [[ -z "$1" ]]; then
-	    echo "Usage: addrequirement <Package=Version>"
-	    echo "       addrequirement <Package> <Version>"
-	    return 1
-	fi
-
-	if [[ -f requirements.txt ]]; then
-		local addedstr="$1"
-		if [[ -z "$2" ]]; then
-			echo "$1" >> requirements.txt
-		else
-			addedstr="$1==$2"
-			echo "${addedstr}" >> requirements.txt
-		fi
-		if [[ "$?" == "0" ]]; then
-			echo "Added '${addedstr}' to requirements.txt"
-			return 0
-		fi
-		echo "Unable to add '${addedstr}' to requirements.txt"
-		return 1
-	fi
-	# Create a requirements.txt and run again.
-	echo "This will create a requirements.txt in: $PWD"
-	local answer=""
-	read -p "Do you want to continue? (y/N): " answer
-	if [[ -z "$answer" ]]; then
-		printf "\nCancelled requirements.txt creation.\n"
-		return 1
-	fi
-	if [[ "${answer}" =~ ^[Yy] ]]; then
-		if touch requirements.txt; then
-			echo "Created: requirements.txt"
-			addrequirement "$@"
-			return 0
-		fi
-		printf "\nUnable to create requirements.txt!\n"
-		return 1
-
-	fi
-	printf "\nCancelled requirements.txt creation.\n"
-	return 1
-
-}
-
 function apache()
 {
 	# runs /etc/init.d/apache2 with args
@@ -178,6 +132,11 @@ function ask()
 	esac
 }
 
+function birthday()
+{
+	date --date="$(stat --printf '%y' /lost+found)"
+}
+
 function camrecord()
 {
 	# record an uncrompressed avi with webcam
@@ -215,11 +174,19 @@ function cdsym()
 	: :
 }
 
+function echo_err()
+{
+	# Echo to stderr (with escape codes).
+	echo -e "$@" 1>&2
+	# Alias manager crap.
+	: :
+}
+
 function echo_failure()
 {
 	# print a red FAILURE message about 71 columns in
 	# all of these were inspired by Fedora's (i think) init.d/functions"
-	local colnumber=71
+	local colnumber="${1:-71}"
 	# move to position
 	echo -en "\\033[${colnumber}G"
 	# shellcheck disable=SC2154
@@ -228,14 +195,14 @@ function echo_failure()
 	echo -en "$RED"
 	echo -n 'FAILURE'
 	echo -en "$red"
-	printf ']\n'
+	echo ']'
 }
 
 function echo_success()
 {
 	# print a green 'SUCCESS' msg about 71 columns in
 	# all of these were inspired by Fedora's (i think) init.d/functions"
-
+	local colnumber="${1:-71}"
 	# move to position
 	echo -en "\\033[${colnumber}G"
 	# shellcheck disable=SC2154
@@ -252,7 +219,7 @@ function echo_warning()
 {
 	# print a yellow WARNING msg about 71 columns in
 	# all of these were inspired by Fedora's (i think) init.d/functions"
-	local colnumber=71
+	local colnumber="${1:-71}"
 	# move to position
 	echo -en "\\033[${colnumber}G"
 	# shellcheck disable=SC2154
@@ -261,13 +228,17 @@ function echo_warning()
 	echo -en "$YELLOW"
 	echo -n 'WARNING'
 	echo -en "$lightyellow"
-	printf ']\n'
+	echo ']'
 }
 
 function fe()
 {
 	# find file and execute command on it
-	find . -type f -iname "\*${1:-}\*" -exec "${2:-file}" {} \;  ;
+	local pattern=$1
+	shift
+	local args=("$@")
+	((${#args[@]})) || args=("echo")
+	find . -type f -iname "*${pattern}*" -exec "${args[@]}" '{}' ';'
 	# Alias manager, force function.
 	: :
 }
@@ -275,16 +246,8 @@ function fe()
 function ff()
 {
 	# find file
-	find . -type f -iname "\*$*\*" -ls ;
+	find . -type f -iname "*${1:-}*" -ls ;
 	# Force function for alias manager.
-	: :
-}
-
-function goget()
-{
-	# Download a go package.
-	sudo -i go get "$@"
-	# Force function for alias manager :(
 	: :
 }
 
@@ -320,7 +283,7 @@ function kd()
 	else
 		cd "$1"
 		pwd -P
-		ls -a --group-directories-first --color=auto
+		ls -a --group-directories-first --color=always
 	fi
 
 }
@@ -330,11 +293,16 @@ function mkdircd()
 	# make dir and cd to it
 	# mkdir -p "$@" && eval cd "\"\$$#\""
 	if [[ -z "$1" ]] ; then
-		echo "Usage: mkdircd myDir"
-	else
-		mkdir -p "$1"
-		cd "$1"
+		echo "Usage: mkdircd DIR"
+		return 1
 	fi
+	if ! mkdir -p "$1" && cd "$1"; then
+		echo "Failed to make and cd to dir: $1" 1>&2
+		return 1
+	fi
+	echo "Created $1"
+	echo "Moved to $(pwd)"
+	return 0
 }
 
 function move_to_col()
@@ -456,13 +424,8 @@ function portscan()
 function print_failure()
 {
 	# display a custom failure message using echo_failure
-	if [[ -z "$1" ]]; then
-		local msgtext=""
-	else
-		local msgtext="$1"
-	fi
-	echo -n "$msgtext"
-	echo_failure
+	echo -e -n "$@"
+	echo_failure "$((${COLUMNS:-80} - 10))"
 }
 
 function print_status()
@@ -492,91 +455,30 @@ function print_status()
 function print_success()
 {
 	# displays a custom success msg using echo_success
-	local msg="${1:-}"
-	echo -n "$msg"
-	echo_success
+	echo -e -n "$@"
+	echo_success "$((${COLUMNS:-80} - 10))"
 }
 
 function print_warning()
 {
 	# displays custom warning message using echo_warning
-	local msg="${1:-}"
-	echo -n "$msg"
-	echo_warning
+	echo -e -n "$@"
+	echo_warning "$((${COLUMNS:-80} - 10))"
 }
 
 function pscores()
 {
-	# Show which cores a process is using (the PSR column in ps)
-	if [[ -z "$1" ]]; then
-		echo "Usage: pscores <pid>"
-		return
-	fi
-
-	ps -p "$1" -L -o command,pid,tid,psr,pcpu
-}
-
-function pscoresname()
-{
 	# Show which cores a process is using (PSR column in ps), by name
 	if [[ -z "$1" ]]; then
-		echo "Usage: pscoresname <name>"
+		echo "Usage: pscoresname <name_or_pid>"
 		return
 	fi
-
-	pname="$(pidname "$1" --pidonly)"
+	local pname
+	if ! pname="$(pidname "$1" --pidonly)"; then
+		echo_err "Unable to get pid for: $1"
+		return 1
+	fi
 	ps -p "$pname" -L -o command,pid,tid,psr,pcpu
-}
-
-function psmemory()
-{
-	# Show process memory usage according to ps, pmap and possibly others.
-	if [[ -z "$1" ]]; then
-	    echo "usage: psmemory <process>"
-	    echo "    * <process> can be a name, or pid."
-	    return
-	fi
-
-	if ! cmdexists pidname; then
-	    echo "This command requires 'pidname' to be installed!"
-	    return
-	fi
-
-	local pid
-	    pid=$(pidname "$1" -p)
-	if [[ -z "$pid" ]]; then
-	    echo "Unable to find a command with: $1"
-	    return
-	fi
-
-	printf "\nps memory usage:\n"
-	ps -v -p "$pid"
-
-	if ps -v --ppid "$pid" 1>/dev/null; then
-	    printf "\nchild memory usage:\n"
-	    ps -v --ppid "$pid"
-	fi
-
-
-}
-
-function pssearch()
-{
-	# Search for process name in `ps` output.
-	if (( $# == 0 )); then
-	    # Show warning about no args.
-	    echo "usage: pssearch <process_name>"
-	    echo "       * any arguments are passed to grep."
-		return
-	fi
-
-	# Show ps header
-	ps aux | head -n1
-
-	# Show ps | grep info. (filter grep process out)
-	# shellcheck disable=SC2009
-	ps aux | grep "$@" | grep -v "grep"
-
 }
 
 function pylite()
@@ -603,7 +505,7 @@ function pylitepng()
 {
 	# highlite a python file, output to png file.
 	if [[ -z "$1" ]] || [[ -z "$2" ]]; then
-		echo "usage: pylitepng [srcfile.py] [output.gif]"
+		echo "usage: pylitepng [srcfile.py] [output.png]"
 		return 1
 	fi
 	pygmentize -l python -f png -P style=borland -O full -o "$2" "$1"
@@ -617,33 +519,6 @@ function showmyip()
 	MY_IP="$(/sbin/ifconfig w0 | awk '/inet/ { print $2 } ' | \
 	sed -e s/addr://)"
 	echo " ip: $MY_IP"
-}
-
-function spanishword()
-{
-	# get spanish equivalent of word
-	if [[ -z "$1" ]] ; then
-	    # No arguments given.
-		echo "Usage: spanish <word_to_translate>"
-		return 1
-	fi
-
-	# More help with -h or --help.
-	if [[ "$1" =~ ^(-h)|(--help)$ ]]; then
-	    echo "
-	Usage: spanish <word_to_translate>
-
-	This command is highly dependant on spanish.dictionary.com's
-	layout. If that layout ever changes this command may return
-	gibberish. If that happens, you can either edit the command,
-	or not use it.
-	"
-	    return 1
-	fi
-
-	# Dump the spanish translation page with lynx
-	lynx -dump -nonumbers -width=160 "http://spanish.dictionary.com/definition/$1?src=en" | grep "$1 / "
-
 }
 
 function sshver()
@@ -697,12 +572,12 @@ function symlink()
 {
 	# create a symbolic link arg2 = arg1
 	if [[ -z "$1" ]] ; then
-		echo "expecting path to linked file. (source)"
-		echo "usage: symlink sourcefile destfile"
+		echo_err "expecting path to linked file. (source)"
+		echo_err "usage: symlink sourcefile destfile"
 		return 1
 	elif [[ -z "$2" ]] ; then
-		echo "expecting path to link. (destination)"
-		echo "usage: symlink sourcefile destfile"
+		echo_err "expecting path to link. (destination)"
+		echo_err "usage: symlink sourcefile destfile"
 		return 1
 	fi
 	# Create the link
@@ -712,11 +587,12 @@ function symlink()
 function sysversions()
 {
 	# Shows current ubuntu/linux/kernel versions
-	echo -e "\nDistro Information:"
-	lsb_release -a
-	echo -e "\nLinux/Kernel Information:"
-	uname -a
-	stat --printf "\nBirth day:\n    %y\n" /lost+found
+	printf "\nDistro Information:\n%s\n" \
+		"$(lsb_release -a 2>/dev/null | column -s':' -t | sed 's/^/    /')"
+	printf "\nLinux/Kernel Information:\n    %s\n" \
+		"$(	uname -a)"
+	printf "\nBirth day:\n    %s\n" \
+		"$(birthday)"
 }
 
 function tarlist()
@@ -818,22 +694,22 @@ function ziplist()
 }
 
 # Exports:
-export addrequirement
 export apache
 export apachelog
 export aptinstall
 export argclinic
 export asciimovie
 export ask
+export birthday
 export camrecord
 export cdgodir
 export cdsym
+export echo_err
 export echo_failure
 export echo_success
 export echo_warning
 export fe
 export ff
-export goget
 export inetinfo
 export kd
 export mkdircd
@@ -849,14 +725,10 @@ export print_status
 export print_success
 export print_warning
 export pscores
-export pscoresname
-export psmemory
-export pssearch
 export pylite
 export pylitegif
 export pylitepng
 export showmyip
-export spanishword
 export sshver
 export switchroot
 export symlink

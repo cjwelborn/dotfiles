@@ -4,6 +4,8 @@
 
 # The format is: relative-executable-path-in-repo=repo-url
 
+# Dreampie Python REPL GUI.
+dreampie=https://github.com/noamraph/dreampie.git
 # Rust linting tool, used by editor plugins.
 target/release/cargo-check=https://github.com/rsolomo/cargo-check.git
 # Rust autocomplete tool, used by editor plugins.

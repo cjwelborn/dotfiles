@@ -72,8 +72,8 @@ if [[ -d $cjhome/bin ]] &&  [[ -x $cjhome/bin ]]; then
 fi
 
 # Paths for go language.
-if [[ -d $cjhome/gocode ]] && [[ -x $cjhome/gocode ]]; then
-    export GOPATH=$cjhome/gocode
+if [[ -d $cjhome/scripts/go ]] && [[ -x $cjhome/scripts/go ]]; then
+    export GOPATH=$cjhome/scripts/go
     export PATH=$PATH:$GOPATH/bin
 fi
 

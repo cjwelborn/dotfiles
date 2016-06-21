@@ -36,6 +36,7 @@ gimp-help-en
 git
 git-extras
 gitstats
+golang
 google-chrome-stable
 graphicsmagick-libmagick-dev-compat
 graphviz
@@ -60,6 +61,7 @@ kubuntu-desktop
 language-pack-gnome-en
 libamd2.3.1
 libapache2-mod-wsgi-py3
+libasound2-dev
 libbasicusageenvironment0
 libbonobo2-0
 libboost-all-dev
@@ -95,6 +97,7 @@ libgl1-mesa-dri
 libgl1-mesa-glx
 libglapi-mesa
 libgnome2-common
+libgnome2-dev
 libgoogle-glog-dev
 libgraphicsmagick++11
 libgraphicsmagick3
@@ -143,6 +146,7 @@ libunity9
 libunity-protocol-private0
 libusageenvironment1
 libvigraimpex-dev
+libvte-dev
 libwebp-dev
 libwireshark5
 libwiretap4
@@ -170,6 +174,7 @@ llvm
 llvm-dev
 lm-sensors
 lolcat
+lynx
 mailutils
 meld
 mercurial
@@ -180,6 +185,7 @@ mumble
 muon
 ndiff
 nmap
+numptyphysics
 openssh-server
 pandoc
 parallel
@@ -204,7 +210,9 @@ python-gtksourceview2
 python-lxml
 python-pip
 python-pycuda
+python-pycurl
 python-pypy.sandbox
+python-qt4
 python-scipy
 python-twisted
 python-twisted-words
@@ -221,6 +229,7 @@ sddm-theme-lubuntu-chooser
 sddm-theme-maldives
 sddm-theme-maui
 shellcheck
+silversearcher-ag
 smbclient
 snapd
 sox
@@ -232,9 +241,11 @@ texlive-latex-base
 thunderbird
 thunderbird-locale-en
 tmux
+torcs
 tree
 unetbootin
 unrar
+vice
 vim-runtime
 vim-with-python
 virtualenvwrapper
@@ -244,6 +255,8 @@ vokoscreen
 whois
 winpdb
 wireshark
+wkhtmltopdf
+xmoto
 xterm
 yakuake
 zeal

@@ -33,6 +33,7 @@ green
 imutils
 *iotop
 *ipaddress
+linecache2
 *lxml
 *Mako
 *MarkupSafe
@@ -60,6 +61,7 @@ psutil
 *pycparser
 *pycrypto
 *pycuda
+*pycurl
 *Pygments
 *pygobject
 *pygpgme
@@ -83,7 +85,9 @@ scipy
 *setuptools
 *six
 *stevedore
+traceback2
 *Twisted
+unittest2
 *urllib3
 *urwid
 *virtualenv

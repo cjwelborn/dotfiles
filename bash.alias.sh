@@ -26,6 +26,7 @@ alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias colr="python3 -m colr" # Shortcut to python3 -m colr.
 alias dirs="dirs -v" # Vertical directory listing for 'dirs', with indexes.
+alias echo_path="echo \$PATH | tr ':' '\n'" # Echo $PATH, with newlines.
 alias exal="exa -abghHliS" # Run exa with a long, detailed view.
 alias greenv="green -vv" # Run green with -vv for more verbosity.
 alias grep="grep -E --color=always" # use colors and regex for grep always

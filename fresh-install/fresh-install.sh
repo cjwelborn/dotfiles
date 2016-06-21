@@ -17,7 +17,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.4"
+appversion="0.2.5"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -645,11 +645,16 @@ function install_git_clone {
     fi
     repodir="$(clone_repo "$repourl" "$clonedir/$exename" "${gitargs[@]}")" || return 1
     local exepath="$repodir/$relexepath"
+    local lnargs=("$exepath" "$homebin/$exename")
     if [[ ! -e "$exepath" ]]; then
         echo_err "Missing executable after cloning: $exepath"
+        echo_err "The project may need to be compiled..."
+        # Add this to failed cmds, to remind about it later.
+        local lncmd="ln -s ${lnargs[*]}"
+        failed_cmds[$lncmd]=("Missing clone executable: $exepath")
         return 1
     fi
-    if ! ln -s "$exepath" "$homebin/$exename"; then
+    if ! ln -s "${lnargs[@]}"; then
         echo_err "Failed to create symlink: $homebin/$exename"
         return 1
     fi

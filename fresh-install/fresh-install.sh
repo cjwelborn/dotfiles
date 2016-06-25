@@ -17,7 +17,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.5"
+appversion="0.2.6"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -86,10 +86,8 @@ function clone_repo {
     #   $1    : Repo url.
     #   $2    : Destination directory.
     #   $3... : Git args.
-    local repo=$1
-    local destdir=$2
-    shift
-    shift
+    local repo=$1 destdir=$2
+    shift 2
     if [[ -z "$repo" || -z "$destdir" ]]; then
         echo_err "Expected \$repo and \$destdir for clone_repo!"
         return 1
@@ -136,9 +134,8 @@ function cmd_exists {
 
 function copy_file {
     # Copy a file, unless dry_run is set.
-    local src=$1
-    local dest=$2
-    shift; shift
+    local src=$1 dest=$2
+    shift 2
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_file!"
         return 1
@@ -155,9 +152,8 @@ function copy_file {
 
 function copy_file_sudo {
     # Copy a file using sudo, unless dry_run is set.
-    local src=$1
-    local dest=$2
-    shift; shift
+    local src=$1 dest=$2
+    shift 2
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_file_sudo!"
         return 1
@@ -178,9 +174,7 @@ function copy_files {
     #   $1 : Source directory.
     #   $2 : Destination directory.
     #   $3 : Blacklist pattern, optional.
-    local src=$1
-    local dest=$2
-    local blacklistpat=$3
+    local src=$1 dest=$2 blacklistpat=$3
 
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_files!"
@@ -192,9 +186,7 @@ function copy_files {
         echo_err "No files to install in $src."
         return 1
     fi
-    local srcfilepath
-    local srcfilename
-    local errs=0
+    local srcfilepath srcfilename errs=0
     for srcfilepath in "${dirfiles[@]}"; do
         srcfilename="${srcfilepath##*/}"
         [[ -z "$srcfilename" ]] && continue
@@ -252,8 +244,7 @@ function debugf {
 
 function debug_depends {
     # Check script dependencies and print some debug info about them.
-    local cmdname
-    local msgfmt
+    local cmdname msgfmt
     for cmdname in "${!script_depends[@]}"; do
         if cmd_exists "$cmdname"; then
             msgfmt="Dependency exists:  %12s (%s)\n"
@@ -328,9 +319,7 @@ function find_pip {
     # List installed pip packages on this machine.
     # Arguments:
     #   $1 : Pip version (2 or 3).
-    local ver="${1:-3}"
-    local exe="pip${ver}"
-    local exepath
+    local ver="${1:-3}" exe="pip${ver}" exepath
     if ! exepath="$(which "$exe" 2>/dev/null)"; then
         fail "Failed to locate $exe!"
     else
@@ -396,10 +385,7 @@ function install_apm_packages {
     local apmnames
     apmnames=($(list_file "$filename_apm")) || return 1
     ((${#apmnames[@]})) || return 1
-    local apmname
-    local errs=0
-    local installcmd
-    local installdesc
+    local apmname installcmd installdesc errs=0
     for apmname in "${apmnames[@]}"; do
         installcmd="apm install '$apmname'"
         installdesc="Installing apm package: $apmname"
@@ -411,11 +397,7 @@ function install_apm_packages {
 function install_apt_depends {
     # Install all script dependencies.
     ((${#script_depends[@]})) || return 1
-    local errs=0
-    local cmdname
-    local pkgname
-    local installcmd
-    local installdesc
+    local errs=0 cmdname pkgname installcmd installdesc
     for cmdname in "${!script_depends[@]}"; do
         cmd_exists "$cmdname" && {
             debug "Command dependency already exists: $cmdname"
@@ -433,10 +415,7 @@ function install_apt_packages {
     local pkgnames
     pkgnames=($(list_file "$filename_pkgs")) || return 1;
     ((${#pkgnames[@]})) || return 1
-    local errs=0
-    local pkgname
-    local installcmd
-    local installdesc
+    local errs=0 pkgname installcmd installdesc
     for pkgname in "${pkgnames[@]}"; do
         installdesc="Installing apt package: $pkgname"
         run_cmd "$aptinstallcmd '$pkgname'" "$installdesc" || let errs+=1
@@ -498,10 +477,7 @@ function install_config {
 function install_debfiles {
     # Install all .deb files in $appdir/debs/ (unless dry_run is set).
     local debfiles=($(get_debfiles))
-    local debfile
-    local errs=0
-    local installcmd
-    local installdesc
+    local errs=0 debfile installcmd installdesc
     for debfile in "${debfiles[@]}"; do
         installcmd="sudo dpkg -i '$debfile'"
         installdesc="Installing ${debfile##*/}..."
@@ -520,14 +496,7 @@ function install_debfiles_remote {
         echo_err "Unable to create a temporary directory!"
         return 1
     fi
-    local debline
-    local pkgname
-    local pkgurl
-    local pkgpath
-    local pkgmsgs
-    local errs=0
-    local installcmd
-    local installdesc
+    local errs=0 debline pkgname pkgurl pkgpath pkgmsgs installcmd installdesc
     for debline in "${deblines[@]}"; do
         pkgname="${debline%%=*}"
         pkgurl="${debline##*=}"
@@ -564,8 +533,7 @@ function install_debfiles_remote {
 
 function install_dotfiles {
     # Install dotfiles files from $appdir/../
-    local home="${HOME:-/home/$USER}"
-    local srcdir="$appdir"/..
+    local home="${HOME:-/home/$USER}" srcdir="$appdir"/..
     debug "Copying dot files from $srcdir ..."
     if ! symlink_files "$srcdir" "$home" '('"$appname"')|(README)|(^\.git$)'; then
         echo_err "Failed to symlink files: $srcdir -> $home"
@@ -622,17 +590,13 @@ function install_git_clone {
     #   $1    : relative executable path (relative to git repo)
     #   $2    : repo url
     #   $3... : git args
-    local relexepath=$1
-    local repourl=$2
-    shift
-    shift
+    local relexepath=$1 repourl=$2
+    shift 2
     if [[ -z "$relexepath" || -z "$repourl" ]]; then
         echo_err "Expected \$relexepath and \$repourl in install_git_repo!"
         return 1
     fi
-    local exename="${relexepath##*/}"
-    local gitargs=("$@")
-    local clonedir=~/clones
+    local exename="${relexepath##*/}" gitargs=("$@") clonedir=~/clones
     make_dir "$clonedir/$exename" || return 1
     local homebin=~/.local/bin
     make_dir "$homebin" || return 1
@@ -666,10 +630,7 @@ function install_git_clones {
     local gitlines
     gitlines=($(list_file "$filename_git_clones")) || return 1
     ((${#gitlines[@]})) || return 1
-    local gitline
-    local relexepath
-    local repourl
-    local errs=0
+    local errs=0 gitline relexepath repourl errs=0
     for gitline in "${gitlines[@]}"; do
         relexepath="${gitline%%=*}"
         repourl="${gitline##*=}"
@@ -697,13 +658,10 @@ function install_pip_packages {
 
     declare -a sudopkgs
     declare -a normalpkgs
-    local sudopkgs
-    local normalpkgs
-    local pkgnames
+    local sudopkgs normalpkgs pkgnames
     pkgnames=($(list_file "$filename")) || return 1
     ((${#pkgnames[@]})) || return 1
-    local pkgname
-    local sudopat='^\*'
+    local pkgname sudopat='^\*'
     for pkgname in "${pkgnames[@]}"; do
         if [[ "$pkgname" =~ $sudopat ]]; then
             sudopkgs+=("${pkgname:1}")
@@ -715,9 +673,7 @@ function install_pip_packages {
         echo_err "No pip${ver} packages found in $filename."
         return 1
     fi
-    local errs=0
-    local installcmd
-    local installdesc
+    local errs=0 installcmd installdesc
     if ((${#sudopkgs[@]})); then
         echo "Installing global pip${ver} packages..."
         local sudopkg
@@ -757,8 +713,7 @@ function is_skipped_line {
 function is_system_pip {
     # Returns a success exit status if the pip package is found in the
     # global dir.
-    local ver="${1:-3}"
-    local pkg=$2
+    local ver="${1:-3}" pkg=$2
     [[ -n "$pkg" ]] || fail "Expected a package name for is_system_pip!"
     local pkgloc
     if ! pkgloc="$(pip"$ver" show "$pkg" | grep Location | cut -d ' ' -f 2)"; then
@@ -792,9 +747,7 @@ function list_debfiles_remote {
         echo_err "Failed to read remote deb file list: $filename_remote_debs"
         return 1
     fi
-    local debline
-    local pkgname
-    local pkgurl
+    local debline pkgname pkgurl
     echo -e "\nRemote debian packages:"
     for debline in "${deblines[@]}"; do
         is_skipped_line "$debline" && continue
@@ -870,9 +823,8 @@ function make_temp_dir {
 
 function move_file {
     # Move a file, unless dry_run is set.
-    local src=$1
-    local dest=$2
-    shift; shift
+    local src=$1 dest=$2
+    shift 2
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for move_file!"
         return 1
@@ -887,9 +839,8 @@ function move_file {
 
 function move_file_sudo {
     # Move a file using sudo, unless dry_run is set.
-    local src=$1
-    local dest=$2
-    shift; shift
+    local src=$1 dest=$2
+    shift 2
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for move_file!"
         return 1
@@ -1030,9 +981,8 @@ function strjoin {
 
 function symlink_file {
     # Symlink a file, unless dry_run is set.
-    local src=$1
-    local dest=$2
-    shift; shift
+    local src=$1 dest=$2
+    shift 2
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for symlink_file!"
         return 1
@@ -1047,9 +997,8 @@ function symlink_file {
 
 function symlink_file_sudo {
     # Symlink a file, unless dry_run is set.
-    local src=$1
-    local dest=$2
-    shift; shift
+    local src=$1 dest=$2
+    shift 2
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for symlink_file!"
         return 1
@@ -1068,9 +1017,7 @@ function symlink_files {
     #   $1 : Source directory.
     #   $2 : Destination directory.
     #   $3 : Blacklist pattern, optional.
-    local src=$1
-    local dest=$2
-    local blacklistpat=$3
+    local src=$1 dest=$2 blacklistpat=$3
 
     if [[ -z "$src" ]] || [[ -z "$dest" ]]; then
         echo_err "Expected \$src and \$dest for copy_files!"
@@ -1082,9 +1029,7 @@ function symlink_files {
         echo_err "No files to install in $src."
         return 1
     fi
-    local srcfilepath
-    local srcfilename
-    local errs=0
+    local errs=0 srcfilepath srcfilename
     for srcfilepath in "${dirfiles[@]}"; do
         srcfilename="${srcfilepath##*/}"
         [[ -z "$srcfilename" ]] && continue

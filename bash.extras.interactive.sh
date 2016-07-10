@@ -203,9 +203,9 @@ function favor_fortune {
     # databases.
     # Falls back to no color if lolcat is missing.
     # Falls back to normal distribution if favorites are missing.
-    if which fortune &>/dev/null; then
+    if hash fortune &>/dev/null; then
         local filtercmd
-        if which lolcat &>/dev/null; then
+        if hash lolcat &>/dev/null; then
             # Filter the fortunes through lolcat.
             filtercmd='lolcat'
         else
@@ -261,7 +261,7 @@ unset -v aliasmgrfile
 favor_fortune
 
 # Print cj's todo list.
-if ! which todo &>/dev/null; then
+if ! hash todo &>/dev/null; then
     bashextraslog "Can't find the 'todo' app."
 else
     # print todo list

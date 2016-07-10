@@ -20,12 +20,14 @@
 # Aliases:
 alias aptfix="sudo apt-get install -f" # try to fix broken packages...
 alias aptinstall="sudo apt-get install" # Shortcut to sudo apt-get install
+alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrite'" # Use --force-overwrite with any apt-get command.
 alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar" # BFG Repo-Cleaner for git.
 alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
 alias colr="python3 -m colr" # Shortcut to python3 -m colr.
 alias dirs="dirs -v" # Vertical directory listing for 'dirs', with indexes.
+alias distupgrade="sudo apt-get update && sudo apt-get dist-upgrade" # Sudo update and dist-upgrade.
 alias echo_path="echo \$PATH | tr ':' '\n'" # Echo $PATH, with newlines.
 alias exal="exa -abghHliS" # Run exa with a long, detailed view.
 alias greenv="green -vv" # Run green with -vv for more verbosity.
@@ -42,7 +44,6 @@ alias lt="tree -a -C --dirsfirst | more -s" # List dir using tree
 alias mkdir="mkdir -p" # Prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
-alias mypy="mypy --python-version 3.5" # Tell mypy to use  python 3.5.
 alias npminstall="npm install --prefix=\$HOME" # Use npm install with a prefix set to $HOME
 alias perlmods="cpan -l | sort" # List all installed perl modules (shortcode for cpan -l)
 alias phpi="php5 -a" # Just a shortcut to php5 -a, thats all.

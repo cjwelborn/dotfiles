@@ -10,6 +10,7 @@
 #   bash config files (from github.com/cjwelborn/cj-dotfiles)
 #   ruby gems (from a list.txt)
 #   atom packages (from a list.txt)
+#   git clones (from a list.txt)
 #
 # -Christopher Welborn 05-31-2016
 shopt -s dotglob
@@ -124,8 +125,8 @@ function clone_repo_tmp {
 }
 
 function cmd_exists {
-    # Shortcut to which $1 &>/dev/null, with a better message on failure.
-    if ! which "$1" &>/dev/null; then
+    # Shortcut to hash $1 &>/dev/null, with a better message on failure.
+    if ! hash "$1" &>/dev/null; then
         echo_err "Executable not found: $1"
         return 1
     fi

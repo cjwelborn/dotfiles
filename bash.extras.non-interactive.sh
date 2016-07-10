@@ -53,12 +53,12 @@ else
 fi
 
 # Basic environment variables.
-if which cedit &>/dev/null; then
+if hash cedit &>/dev/null; then
     # Use whatever my favorite editor is set to.
     export EDITOR="cedit"
-elif which vim &>/dev/null; then
+elif hash vim &>/dev/null; then
     export EDITOR="vim"
-elif which nano &>/dev/null; then
+elif hash nano &>/dev/null; then
     # If worse comes to worse...
     export EDITOR="nano"
 fi

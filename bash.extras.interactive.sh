@@ -231,7 +231,7 @@ function favor_fortune {
         fortunefavs=(
             ["50%"]="irc_debian_hackers"
             ["25%"]="ascii-art"
-            ["10%"]="computers")
+            ["15%"]="computers")
         declare -a fortuneargs
         local favorchance
         local favordb

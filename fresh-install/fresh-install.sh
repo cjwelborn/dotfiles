@@ -18,7 +18,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.6"
+appversion="0.2.7"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -879,24 +879,24 @@ function print_usage {
                               Nothing will be installed to the system.
         -f,--dotfiles       : Install dot files from cj-dotfiles repo.
         -f2,--findpip2      : List installed pip 2.7 packages on this machine.
-                              Used to build $filename_pip2_pkgs.
+                              Used to build ${filename_pip2_pkgs##*/}.
         -f3,--findpip3      : List installed pip 3 packages on this machine.
-                              Used to build $filename_pip3_pkgs.
+                              Used to build ${filename_pip3_pkgs##*/}.
         -fa,--findapm       : List installed apm packages on this machine.
-                              Used to build $filename_apm.
+                              Used to build ${filename_apm##*/}.
         -fp,--findpackages  : List installed packages on this machine.
-                              Used to build $filename_pkgs.
+                              Used to build ${filename_pkgs##*/}.
         -g,--gems           : Install ruby gem packages.
         -gc,--gitclones     : Install git clones.
         -h,--help           : Show this message.
-        -l,--list           : List apt packages in $filename_pkgs.
-        -l2,--listpip2      : List pip2 packages in $filename_pip2_pkgs.
-        -l3,--listpip3      : List pip3 packages in $filename_pip3_pkgs.
-        -la,--listapm       : List apm packages in $filename_apm.
-        -lc,--listclones    : List git clones in $filename_git_clones.
+        -l,--list           : List apt packages in ${filename_pkgs##*/}.
+        -l2,--listpip2      : List pip2 packages in ${filename_pip2_pkgs##*/}.
+        -l3,--listpip3      : List pip3 packages in ${filename_pip3_pkgs##*/}.
+        -la,--listapm       : List apm packages in ${filename_apm##*/}.
+        -lc,--listclones    : List git clones in ${filename_git_clones##*/}.
         -ld,--listdebs      : List all .deb files in ./debs, and remote
-                              packages in $filename_remote_debs.
-        -lg,--listgems      : List gem package names in $filename_gems.
+                              packages in ${filename_remote_debs##*/}.
+        -lg,--listgems      : List gem package names in ${filename_gems##*/}.
         -p,--debfiles       : Install ./debs/*.deb packages.
         -p2,--pip2          : Install pip2 packages.
         -p3,--pip3          : Install pip3 packages.

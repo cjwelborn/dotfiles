@@ -15,12 +15,11 @@
 #     ...if you use a different style it may or may not
 #        break the program and I can't help you.
 
-
-
 # Aliases:
 alias aptfix="sudo apt-get install -f" # try to fix broken packages...
 alias aptinstall="sudo apt-get install" # Shortcut to sudo apt-get install
 alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrite'" # Use --force-overwrite with any apt-get command.
+alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org" # http://overthewire.org/wargames/bandit
 alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar" # BFG Repo-Cleaner for git.
 alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions

@@ -19,6 +19,9 @@ shopt -s cdable_vars
 # Allow recursive star patterns (**/*)
 shopt -s globstar
 
+# Ignore duplicate entries in bash history, but keep the most recent.
+export HISTCONTROL=ignoreboth:erasedups
+
 function _echo {
     # Echo only in interactive mode.
     if [[ -n "$PS1" ]]; then

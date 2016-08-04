@@ -266,7 +266,7 @@ if ! hash todo &>/dev/null; then
 else
     # print todo list
     echo ""
-    todo
+    todo --preview
 fi
 
 # Setup lesspipe, so the `less` command can handle other file types.

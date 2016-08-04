@@ -40,6 +40,7 @@ alias linuxversion="uname -a" # show current linux kernel info/version
 alias ll="ls -alh --group-directories-first --color=always" # Long list dir
 alias ls="ls -a --color=always --group-directories-first" # List dir
 alias lt="tree -a -C --dirsfirst | more -s" # List dir using tree
+alias ltd="tree -a -C -d | more -s" # List directories only, using tree (same as `treed`).
 alias mkdir="mkdir -p" # Prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
@@ -57,7 +58,7 @@ alias servers="sudo netstat -ltupn" # Show all listening servers on this machine
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io" # SSH into koding.com vm (with XForwarding)
 alias temp="which sensors &>/dev/null && sensors -f" # Show temperature for machines with 'sensors' installed.
 alias tmux="tmux -2" # Use 256 colors with tmux.
-alias treed="tree -C -d | more -s" # Shows directory tree, directories only...
+alias treed="tree -a -C -d | more -s" # Shows directory tree, directories only...
 alias twistedconsole="python -m twisted.conch.stdio" # Runs twisted console (reactor already running)
 alias ubuntuversion="lsb_release -a" # shows current ubuntu distro version/codename
 alias wpdb="psql welbornprod_db" # Opens a Postgres shell for welbornprod_db.

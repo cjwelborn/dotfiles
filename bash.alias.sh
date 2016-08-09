@@ -587,17 +587,6 @@ function symlink()
 	ln -s "$1" "$2"
 }
 
-function sysversions()
-{
-	# Shows current ubuntu/linux/kernel versions
-	printf "\nDistro Information:\n%s\n" \
-		"$(lsb_release -a 2>/dev/null | column -s':' -t | sed 's/^/    /')"
-	printf "\nLinux/Kernel Information:\n    %s\n" \
-		"$(	uname -a)"
-	printf "\nBirth day:\n    %s\n" \
-		"$(birthday)"
-}
-
 function tarlist()
 {
 	# list files in a tar archive...
@@ -735,7 +724,6 @@ export showmyip
 export sshver
 export switchroot
 export symlink
-export sysversions
 export tarlist
 export weatherday
 export weatherweek

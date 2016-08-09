@@ -3,6 +3,7 @@
 
 MagicPython
 atom-beautify
+atom-ctags
 autocomplete-awk
 autocomplete-bash-builtins
 autocomplete-clang

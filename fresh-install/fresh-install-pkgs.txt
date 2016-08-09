@@ -22,7 +22,9 @@ docker-engine
 dosbox
 dropbox
 elinks
+exuberant-ctags
 ffmpeg
+filelight
 fortune-mod
 fortunes
 fortunes-bofh-excuses
@@ -51,10 +53,13 @@ inkscape
 iotop
 iwscanner
 kamerka
+kamoso
+kcachegrind
 kcharselect
 kdeartwork-emoticons
 kdenlive
 kde-spectacle
+kdf
 kdiff3
 kopete
 krita
@@ -113,6 +118,7 @@ liblinear1
 liblivemedia23
 libllvm3.8
 liblmdb-dev
+liblockfile1
 liblua5.2-0
 libmessaging-menu0
 libncurses5-dev
@@ -132,6 +138,7 @@ libpgm-5.1-0
 libprotobuf-dev
 libpython3.4-dbg
 libqt5qml-graphicaleffects
+libquvi7
 libraw10
 libsdl1.2-dev
 libsnappy-dev
@@ -235,10 +242,12 @@ sddm-theme-maldives
 sddm-theme-maui
 shellcheck
 silversearcher-ag
+sl
 smbclient
 snapd
 sox
 speedcrunch
+sshpass
 ssmtp
 steam-launcher
 sysstat
@@ -250,6 +259,7 @@ torcs
 tree
 unetbootin
 unrar
+valgrind
 vice
 vim-runtime
 vim-with-python

@@ -40,47 +40,82 @@ unset -v dircolorsfile
 
 # ---------------------------------- COLORS ----------------------------------
 # Define some colors first: (SC2034 = Unused vars (they are exported though))
-            red='\e[0;31m'     # shellcheck disable=SC2034
-      redprompt='\[e[0;31m\]'
-            RED='\e[1;31m'
-      REDPROMPT='\[\e[1;31m\]' # shellcheck disable=SC2034
-           blue='\e[0;34m    ' # shellcheck disable=SC2034
-           BLUE='\e[1;34m'
-     BLUEPROMPT='\[\e[1;34m\]' # shellcheck disable=SC2034
-           cyan='\e[0;36m'     # shellcheck disable=SC2034
-     cyanprompt='\[\e[0;36m\]'
-           CYAN='\e[1;36m'
-     CYANPROMPT='\[\e[1;36m\]' # shellcheck disable=SC2034
-             NC='\e[0m'        # No Color
-       NCPROMPT='\[\e[0m\]'
-          black='\e[0;30m'     # shellcheck disable=SC2034
-       DARKGRAY='\e[1;30m'     # shellcheck disable=SC2034
-      LIGHTBLUE='\e[1;34m'     # shellcheck disable=SC2034
-LIGHTBLUEPROMPT='\[\e[1;34m\]'
-          green='\e[0;32m'     # shellcheck disable=SC2034
-     LIGHTGREEN='\e[1;32m'     # shellcheck disable=SC2034
-         purple='\e[0;35m'     # shellcheck disable=SC2034
-    LIGHTPURPLE='\e[1;35m'     # shellcheck disable=SC2034
-         YELLOW='\e[1;33m'     # shellcheck disable=SC2034
-    lightyellow='\e[0;33m'     # shellcheck disable=SC2034
-      lightgray='\e[0;37m'     # shellcheck disable=SC2034
-          WHITE='\e[1;37m'     # shellcheck disable=SC2034
+
+export NOCOLOR=$'\e[0m'
+export NC=$NOCOLOR
+export black=$'\e[0;30m'
+export red=$'\e[0;31m'
+export green=$'\e[0;32m'
+export yellow=$'\e[0;33m'
+export blue=$'\e[0;34m'
+export magenta=$'\e[0;35m'
+export cyan=$'\e[0;36m'
+export white=$'\e[0;37m'
+export DARKGRAY=$'\e[1;30m'
+export RED=$'\e[1;31m'
+export GREEN=$'\e[1;32m'
+export YELLOW=$'\e[1;33m'
+export BLUE=$'\e[1;34m'
+export MAGENTA=$'\e[1;35m'
+export CYAN=$'\e[1;36m'
+export WHITE=$'\e[1;37m'
+export bg_black=$'\e[40m'
+export bg_red=$'\e[41m'
+export bg_green=$'\e[42m'
+export bg_yellow=$'\e[43m'
+export bg_blue=$'\e[44m'
+export bg_magenta=$'\e[45m'
+export bg_cyan=$'\e[46m'
+export bg_white=$'\e[47m'
 
 
-#Set Hilite Color for 3rd Party Prompts
+# ------------------------------- LESS COLORS --------------------------------
+# Capabilities:
+# ks - make the keypad send commands
+# ke - make the keypad send digits
+# vb - emit visual bell
+# mb - start blink
+# md - start bold
+# me - turn off bold, blink and underline
+# so - start standout (reverse video)
+# se - stop standout
+# us - start underline
+# ue - stop underline
+#  shellcheck disable=SC2155
+function set_less_colors() {
+    # Start blink
+    export LESS_TERMCAP_mb=$RED
+    # Start bold
+    export LESS_TERMCAP_md=$blue
+    # Start standout.
+    export LESS_TERMCAP_so=$'\e[47;1;30m' # Black on white.
+    # Start underline
+    export LESS_TERMCAP_us=$green
+
+    # Stop blink, bold, and underline.
+    export LESS_TERMCAP_me=$NOCOLOR
+    # Stop standout.
+    export LESS_TERMCAP_se=$NOCOLOR
+    # End underline
+    export LESS_TERMCAP_ue=$NOCOLOR
+}
+set_less_colors
+unset -f set_less_colors
+
+# ------------------------------- PROMPT FUNCTIONS ---------------------------
+# Set Hilite Color for 3rd Party Prompts
 if [[ "${DISPLAY%%:0*}" != "" ]]; then
-    HILIT=${redprompt}   # remote machine: prompt will be partly red
+    HILIT=$red   # remote machine: prompt will be partly red
 else
-    HILIT=${cyanprompt}  # local machine: prompt will be partly cyan
+    HILIT=$cyan  # local machine: prompt will be partly cyan
 fi
 
-# ------------------------------- PROMPT FUNCTIONS ----------------------------
 # This is needed for the simple/default prompts.
 if [[ -z "${debian_chroot:-}" ]] && [[ -r /etc/debian_chroot ]]; then
     debian_chroot=$(cat /etc/debian_chroot)
 fi
 
-# Following simple/default prompt function from original simple/fancy prompts...
+# Following simple/default prompt function from original simple/fancy prompts.
 function simpleprompt()
 {
     # depends on debian_chroot being available:
@@ -104,9 +139,9 @@ function fastprompt() {
     unset PROMPT_COMMAND
     case $TERM in
         *term | rxvt )
-        PS1="${HILIT}[\h]$NCPROMPT \W > \[\033]0;\${TERM} [\u@\h] \w\007\]" ;;
+        PS1="${HILIT}[\h]$NOCOLOR \W > \[\033]0;\${TERM} [\u@\h] \w\007\]" ;;
     linux )
-        PS1="${HILIT}[\h]$NCPROMPT \W > " ;;
+        PS1="${HILIT}[\h]$NOCOLOR \W > " ;;
         *)
         PS1="[\h] \W > " ;;
     esac
@@ -122,10 +157,10 @@ function powerprompt() {
     PROMPT_COMMAND="_powerprompt"
     case $TERM in
         *term | rxvt  )
-            PS1="${HILIT}[\A - \$LOAD]${NCPROMPT}\n[\u@\h \#] \W > \
+            PS1="${HILIT}[\A - \$LOAD]${NOCOLOR}\n[\u@\h \#] \W > \
                  \[\033]0;\${TERM} [\u@\h] \w\007\]" ;;
         linux )
-            PS1="${HILIT}[\A - \$LOAD]${NCPROMPT}\n[\u@\h \#] \W > " ;;
+            PS1="${HILIT}[\A - \$LOAD]${NOCOLOR}\n[\u@\h \#] \W > " ;;
         * )
             PS1="[\A - \$LOAD]\n[\u@\h \#] \W > " ;;
     esac
@@ -156,18 +191,25 @@ function powerlineprompt {
 function cjprompt()
 {
     unset -v PROMPT_COMMAND
-    PS1="${LIGHTBLUEPROMPT}\u${NCPROMPT}:${BLUEPROMPT}\W ${NCPROMPT}\$ "
+    PS1="${blue}\u${NOCOLOR}:${BLUE}\W ${NOCOLOR}\$ "
 }
 
 # Function to list prompts that are available.
 function listprompts()
 {
-    echo "cjprompt        - minimal prompt with user:/dir with color."
-    echo "defaultprompt   - standard user@host:/dir prompt with color."
-    echo "fastprompt      - minimal prompt with [hostname] dir > ."
-    echo "powerprompt     - long prompt with extra info like time."
-    echo "powerlineprompt - powerline-shell prompt with icons and info."
-    echo "simpleprompt    - standard user@host:/dir prompt without color."
+    declare -A prompts=(
+        ["cjprompt"]="minimal prompt with user:/dir with color."
+        ["defaultprompt"]="standard user@host:/dir prompt with color."
+        ["fastprompt"]="minimal prompt with [hostname] dir > ."
+        ["powerprompt"]="long prompt with extra info like time."
+        ["powerlineprompt"]="powerline-shell prompt with icons and info."
+        ["simpleprompt"]="standard user@host:/dir prompt without color."
+
+    )
+    local promptname
+    for promptname in "${!prompts[@]}"; do
+        printf "%s%-16s%s: %s%s%s\n" "$blue" "$promptname" "$NOCOLOR" "$green" "${prompts[$promptname]}" "$NOCOLOR"
+    done
 }
 
 

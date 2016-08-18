@@ -38,6 +38,7 @@ alias l="ls -a --color --group-directories-first" # Shortcut for ls (also helpfu
 alias la="ls -Fa --color" # List all files in dir
 alias linuxversion="uname -a" # show current linux kernel info/version
 alias ll="ls -alh --group-directories-first --color=always" # Long list dir
+alias loadps3="sudo xboxdrv --detach-kernel-driver --silent" # Load ps3 controller driver.
 alias ls="ls -a --color=always --group-directories-first" # List dir
 alias lt="tree -a -C --dirsfirst | more -s" # List dir using tree
 alias ltd="tree -a -C -d | more -s" # List directories only, using tree (same as `treed`).

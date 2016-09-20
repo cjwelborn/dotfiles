@@ -229,14 +229,6 @@ else
     }
 fi
 
-# ---------------------------------- GOODBYE ---------------------------------
-# Setup Exit Message
-function _exit_message() {
-    echo -e "\n${RED}Goodbye ${USER:-.}...$NC"
-}
-# Trap/Set Exit Function
-trap _exit_message EXIT
-
 # --------------------------- AUTO-LOADED PROGRAMS ---------------------------
 
 function favor_fortune {
@@ -326,9 +318,62 @@ echo -e "\n$welcomemsg  ${BLUE}$(date)${NC}  $hoststr ($ipstr)"
 # These vars are not needed globally.
 unset -v welcomemsg hoststr ips ipstr
 
+# ---------------------------------- GOODBYE ---------------------------------
+Lastdirfile="$cjhome/.cj-lastdir"
+
+# Setup Exit Message
+function _exit_handler() {
+    save_last_session_dir
+    echo -e "\n${RED}Goodbye ${USER:-.}...$NC"
+}
+# Trap/Set Exit Function
+trap _exit_handler EXIT
+
+function save_last_session_dir {
+    # Shortcut for `echo "$PWD" > "$Lastdirfile"`
+    echo "$PWD" > "$Lastdirfile"
+}
+
+function get_last_session_dir {
+    # Read last saved directory from Lastdirfile and print it.
+    local lastdirs
+    if [[ -e "$Lastdirfile" ]]; then
+        mapfile -t lastdirs < "$Lastdirfile"
+        if ((${#lastdirs[@]})); then
+            if [[ -d "${lastdirs[0]}" ]]; then
+                printf "%s" "${lastdirs[0]}"
+                return 0
+            fi
+            echo -e "\nLast directory is invalid: ${lastdirs[0]}" 1>&2
+            return 1
+
+        fi
+        echo -e "\nLast directory file was empty: $Lastdirfile"
+        return 1
+    fi
+    # No last dir file.
+    return 1
+}
+
+function goto_last_session_dir {
+    # Read Lastdirfile and cd to the last dir saved.
+    # This just runs `cd` if it can't read that file or the file is empty.
+    local lastdir
+    if ! lastdir="$(get_last_session_dir)"; then
+        # No directory to go to.
+        cd
+        return 1
+    fi
+    if [[ -z "$lastdir" ]] || [[ ! -d "$lastdir" ]]; then
+        # Empty lastdir.
+        cd
+        return 1
+    fi
+    cd "$lastdir"
+}
+# Goto the last session's directory.
+goto_last_session_dir
+
 # Remove logging vars/funcs.
 unset -v bashextraslogfile
 unset -f bashextraslog
-
-# Go Home Cj!
-cd

@@ -42,6 +42,7 @@ alias loadps3="sudo xboxdrv --detach-kernel-driver --silent" # Load ps3 controll
 alias ls="ls -a --color=always --group-directories-first" # List dir
 alias lt="tree -a -C --dirsfirst | more -s" # List dir using tree
 alias ltd="tree -a -C -d | more -s" # List directories only, using tree (same as `treed`).
+alias lynxdump="lynx -dump -nonumbers -nolist -width=160" # A simple lynx dump, with minimal output.
 alias mkdir="mkdir -p" # Prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
@@ -62,6 +63,8 @@ alias tmux="tmux -2" # Use 256 colors with tmux.
 alias treed="tree -a -C -d | more -s" # Shows directory tree, directories only...
 alias twistedconsole="python -m twisted.conch.stdio" # Runs twisted console (reactor already running)
 alias ubuntuversion="lsb_release -a" # shows current ubuntu distro version/codename
+alias userslocal="cut -d: -f1 /etc/passwd | sort" # List local users from /etc/passwd
+alias watchpings="sudo tcpdump -i w0 icmp and icmp[icmptype]=icmp-echo" # Monitor who is pinging this machine.
 alias wpdb="psql welbornprod_db" # Opens a Postgres shell for welbornprod_db.
 alias wpsftp="sftp cjwelborn@cjwelborn.webfactional.com" # Opens SFTP session for welbornprod.com
 alias wpssh="ssh -X cjwelborn@cjwelborn.webfactional.com" # Opens SSH session on welbornprod.com
@@ -599,6 +602,14 @@ function tarlist()
 
 }
 
+function userslogin {
+	# List all users with login capabilities.
+	# shellcheck disable=SC2016
+	# ..These are awk parameters, not bash parameter.. shellcheck :(
+	sudo awk -F':' '$2 ~ "\\$" {print $1}' /etc/shadow | sort
+
+}
+
 function weatherday()
 {
 	# display weather per zipcode
@@ -726,6 +737,7 @@ export sshver
 export switchroot
 export symlink
 export tarlist
+export userslogin
 export weatherday
 export weatherweek
 export wmswitch

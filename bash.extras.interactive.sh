@@ -30,6 +30,26 @@ function bashextraslog {
 }
 echo "Loading bash.extras.interactive.sh, cjhome=$cjhome" > "$bashextraslogfile"
 
+# Set font if using a tty (1-6).
+if [[ "$TERM" == "linux" ]]; then
+    bashextraslog "Terminal: linux"
+    # This is the default font that is used for ttys.
+    termfontfile_default="/usr/share/consolefonts/Uni3-Fixed16.psf.gz"
+    # This is the font that I want to use.
+    termfontfile="/usr/share/consolefonts/Uni3-Terminus16.psf.gz"
+    if [[ -e "$termfontfile" ]]; then
+        bashextraslog "Setting font to $termfontfile ..."
+        setfont "$termfontfile"
+    elif [[ -e "$termfontfile_default" ]]; then
+        bashextraslog "Setting font to $termfontfile_default ..."
+        setfont "$termfontfile_default"
+    else
+        bashextraslog "No terminal font files found, tried:"
+        bashextraslog "    $termfontfile"
+        bashextraslog "    $termfontfile_default"
+    fi
+fi
+
 # Set dir_colors if it exists.
 dircolorsfile="$cjhome/.dir_colors"
 if [[ -e "$dircolorsfile" ]]; then

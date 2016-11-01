@@ -2,15 +2,19 @@
 # These packages will be apm installed by fresh-install.sh.
 
 MagicPython
+acid-syntax
 atom-beautify
 atom-ctags
+atom-dark-monokai-syntax
 autocomplete-awk
 autocomplete-bash-builtins
 autocomplete-clang
 autocomplete-html-entities
 autocomplete-python
 color-picker
+dark-bint-syntax
 dark-flat-ui
+ficus-syntax
 git-time-machine
 highlight-selected
 language-bats
@@ -33,6 +37,7 @@ project-manager
 python-autopep8
 racer
 seti-ui
+snow-dark-syntax
 sort-lines
 tabs-to-spaces
 terminal-plus

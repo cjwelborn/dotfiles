@@ -53,7 +53,7 @@ pbr
 *Pillow
 pip
 *ply
-PrintDebug
+*PrintDebug
 protobuf
 psutil
 *pyasn1

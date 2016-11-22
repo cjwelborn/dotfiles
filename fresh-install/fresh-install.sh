@@ -320,25 +320,38 @@ function find_pip {
     # List installed pip packages on this machine.
     # Arguments:
     #   $1 : Pip version (2 or 3).
-    local ver="${1:-3}" exe="pip${ver}" exepath
+    local ver="${1:-3}"
+    local exe="pip${ver}"
+    local exepath
     if ! exepath="$(which "$exe" 2>/dev/null)"; then
         fail "Failed to locate $exe!"
     else
         [[ -n "$exepath" ]] || fail "Failed to locate $exe"
     fi
-    debug "Listing pip${ver} packages..."
+    declare -A pippkgs
     local pkgname
+    # All packages are considered global until `pip list --user` runs.
+    # TODO: This 'cut -d' '-f1' may fail in the future, when pip switches to columns.
+    debug "Listing pip${ver} packages with \`$exepath list\`..."
+    for pkgname in $($exepath list 2>/dev/null | cut -d' ' -f1); do
+        pippkgs[$pkgname]="global"
+    done
+    debug "Listing local user packages with \`$exepath list --user\`..."
+    for pkgname in $($exepath list --user 2>/dev/null | cut -d' ' -f1); do
+        pippkgs[$pkgname]="local"
+    done
+
     echo "# These are python $ver package names."
     echo "# These packages will be installed with pip${ver} by $appscript."
     echo -e "# Packages marked with * are global packages, and require sudo to install.\n"
-    for pkgname in $($exepath list | cut -d' ' -f1); do
-        debug "Checking for system/local package: $pkgname"
-        if is_system_pip "$ver" "$pkgname"; then
+    for pkgname in "${!pippkgs[@]}"; do
+        if [[ "${pippkgs[$pkgname]}" == "global" ]]; then
             echo "*${pkgname}"
         else
             echo "$pkgname"
         fi
-    done
+    # Using `sort --version` to separate local/global packages.
+    done | sort -V
 }
 
 function get_deb_desc {
@@ -711,23 +724,6 @@ function is_skipped_line {
     return 1
 }
 
-function is_system_pip {
-    # Returns a success exit status if the pip package is found in the
-    # global dir.
-    local ver="${1:-3}" pkg=$2
-    [[ -n "$pkg" ]] || fail "Expected a package name for is_system_pip!"
-    local pkgloc
-    if ! pkgloc="$(pip"$ver" show "$pkg" | grep Location | cut -d ' ' -f 2)"; then
-        # Assume errors are system packages.
-        return 0
-    fi
-    # Assume empty locations are system packages.
-    [[ -n "$pkgloc" ]] || return 0
-    # Package locations not starting with /home are considered system packages.
-    [[ "$pkgloc" =~ ^/home ]] || return 0
-    return 1
-}
-
 function list_debfiles {
     local debfiles=($(get_debfiles))
     if ((${#debfiles[@]} == 0)); then
@@ -1065,9 +1061,9 @@ function update_pkg_lists {
     local errs=0
     printf "\nUpdating packages list...\n"
     find_packages > "$filename_pkgs" || let errs+=1
-    printf "\nUpdating pip2 packages list...\n    ...this may take a while.\n"
+    printf "\nUpdating pip2 packages list...\n"
     find_pip "2" > "$filename_pip2_pkgs" || let errs+=1
-    printf "\nUpdating pip3 packages list...\n    ...this may take a while.\n"
+    printf "\nUpdating pip3 packages list...\n"
     find_pip "3" > "$filename_pip3_pkgs" || let errs+=1
     printf "\nUpdating apm packages list...\n"
     find_apm_packages > "$filename_apm" || let errs+=1

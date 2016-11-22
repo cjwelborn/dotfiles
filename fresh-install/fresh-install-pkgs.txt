@@ -1,6 +1,7 @@
 # These are apt/debian packages.
 # These packages will be apt-get installed by fresh-install.sh
 
+an
 android-tools-adb
 android-tools-adbd
 android-tools-fastboot
@@ -212,6 +213,7 @@ openssh-server
 pandoc
 parallel
 pavucontrol
+php7.0-cli
 pinball
 pitivi
 plasma-framework-dbg
@@ -267,6 +269,7 @@ speedcrunch
 sshpass
 ssmtp
 steam-launcher
+stellarium
 sysstat
 texlive-latex-base
 thunderbird

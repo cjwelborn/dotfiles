@@ -14,3 +14,6 @@ target/release/racer=https://github.com/phildawes/racer.git
 googler=https://github.com/jarun/googler.git
 # Creates spark lines in the terminal.
 spark=https://github.com/holman/spark.git
+# A good terminal google searcher.
+googler=git://github.com/jarun/googler.git
+

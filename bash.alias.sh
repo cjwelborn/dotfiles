@@ -46,6 +46,7 @@ alias lynxdump="lynx -dump -nonumbers -nolist -width=160" # A simple lynx dump, 
 alias mkdir="mkdir -p" # Prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
+alias netstatcount="netstat -n | awk '{print \$1}' | egrep -v 'Proto|Active' | sort | uniq -c" # Use netstat to count socket types that are currently open.
 alias npminstall="npm install --prefix=\$HOME" # Use npm install with a prefix set to $HOME
 alias perlmods="cpan -l | sort" # List all installed perl modules (shortcode for cpan -l)
 alias phpi="php5 -a" # Just a shortcut to php5 -a, thats all.

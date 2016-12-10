@@ -24,7 +24,6 @@ alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar" # BFG Repo-Cleaner for git
 alias cjaliases="aliasmgr -pca" # print cjs aliases
 alias cjfunctions="aliasmgr -pcf" # print cjs functions
 alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trickery.
-alias colr="python3 -m colr" # Shortcut to python3 -m colr.
 alias dirs="dirs -v" # Vertical directory listing for 'dirs', with indexes.
 alias distupgrade="sudo apt-get update && sudo apt-get dist-upgrade" # Sudo update and dist-upgrade.
 alias echo_path="echo \$PATH | tr ':' '\n'" # Echo $PATH, with newlines.

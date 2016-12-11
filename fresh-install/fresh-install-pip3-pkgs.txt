@@ -2,17 +2,22 @@
 # These packages will be installed with pip3 by fresh-install.sh.
 # Packages marked with * are global packages, and require sudo to install.
 
+FormatBlock
 Markdown
+OutputCatcher
 Unidecode
 aiohttp
+args
 cffi
 click
+clint
 colorama
 configobj
 cson
 cssselect
 decorator
 flake8
+fonttools
 green
 humanize
 infi.docopt-completion
@@ -24,7 +29,9 @@ pdfkit
 pep8
 pgcli
 pgspecial
+pkginfo
 praw
+prawcore
 psutil
 py
 pycparser
@@ -33,18 +40,24 @@ pypandoc
 pytest
 python-magic
 python-termstyle
+requests
+requests-toolbelt
 requirements-parser
 setproctitle
+setuptools
 six
 sqlparse
+timedop
 toml
 traceback2
+twine
 unittest2
 update-checker
 vanity
 vprof
 vulture
 wcwidth
+wheel
 xattr
 *Colr
 *Django
@@ -78,6 +91,7 @@ xattr
 *language-selector
 *lxml
 *matplotlib
+*mysqlclient
 *nose
 *numpy
 *oauthlib
@@ -102,10 +116,8 @@ xattr
 *pyxdg
 *py-moneyed
 *reportlab
-*requests
 *requests-oauthlib
 *screen-resolution-extra
-*setuptools
 *ssh-import-id
 *twython
 *ua-parser

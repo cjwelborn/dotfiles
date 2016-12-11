@@ -18,7 +18,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.8"
+appversion="0.2.9"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -35,13 +35,13 @@ declare -A script_depends=(
     ["git"]="git"
 )
 
-filename_apm="$appdir/$appname-apm-pkgs.txt"
-filename_gems="$appdir/$appname-gems.txt"
-filename_git_clones="$appdir/$appname-clones.txt"
-filename_pkgs="$appdir/$appname-pkgs.txt"
-filename_pip2_pkgs="$appdir/$appname-pip2-pkgs.txt"
-filename_pip3_pkgs="$appdir/$appname-pip3-pkgs.txt"
-filename_remote_debs="$appdir/$appname-remote-debs.txt"
+filename_apm="$appdir/apm-pkgs.txt"
+filename_gems="$appdir/gems.txt"
+filename_git_clones="$appdir/clones.txt"
+filename_pkgs="$appdir/pkgs.txt"
+filename_pip2_pkgs="$appdir/pip2-pkgs.txt"
+filename_pip3_pkgs="$appdir/pip3-pkgs.txt"
+filename_remote_debs="$appdir/remote-debs.txt"
 required_files=(
     "$filename_apm"
     "$filename_gems"
@@ -69,14 +69,15 @@ function check_required_files {
     done
     if ((required_cnt == 0)); then
         echo_err "Missing all required package list files!"
-        for requiredfile in "${required_files[@]}"; do
-            echo_err "    $requiredfile"
-        done
+        print_required_files "missing" 1>&2
         return 1
     fi
     if ((required_cnt != ${#required_files[@]})); then
         echo_err "Missing some required package list files,"
         echo_err "...some packages may not be installed."
+        print_required_files "missing" 1>&2
+        local missingcnt=$?
+        return $missingcnt
     fi
     return 0
 }
@@ -850,6 +851,38 @@ function move_file_sudo {
     fi
 }
 
+function print_required_files {
+    # Print all required file names in ${required_files[@]}, with their
+    # missing/existing status.
+    # Returns the number of missing files as an exit status.
+    local fname status lbl="Required" foundcnt=0 missingcnt=0 expected=$1
+    [[ -n "$expected" ]] && lbl="${expected^} required"
+    # Save missing/existing status for each file, counting along the way.
+    declare -A filestats
+    for fname in "${required_files[@]}"; do
+        status="missing"
+        if [[ -e "$fname" ]]; then
+            status="existing"
+            let foundcnt+=1
+        else
+            let missingcnt+=1
+        fi
+        filestats[$fname]=$status
+    done
+    # What kind of count are we showing? (missing/total) or (found/total)?
+    local cntof=$missingcnt
+    [[ "$expected" == "existing" ]] && cntof=$foundcnt
+    printf "\n%s files (%s/%s):\n" "$lbl" "$cntof" "${#required_files[@]}"
+
+    for fname in "${!filestats[@]}"; do
+        status="${filestats[$fname]}"
+        if [[ -z "$expected" ]] || [[ "$expected" == "$status" ]]; then
+            printf "%12s: %s\n" "$status" "$fname"
+        fi
+    done
+    return $missingcnt
+}
+
 function print_usage {
     # Show usage reason if first arg is available.
     [[ -n "$1" ]] && echo_err "\n$1\n"
@@ -858,7 +891,7 @@ function print_usage {
 
     Usage:
         $appscript -h | -v
-        $appscript -u [-D]
+        $appscript (-C | -u) [-D]
         $appscript [-f2] [-f3] [-fp] [-D]
         $appscript [-l] [-l2] [-l3] [-lc] [-ld] [-lg] [-D]
         $appscript [-a] [-ap] [-c] [-f] [-g] [-gc] [-p] [-p2] [-p3] [-D]
@@ -866,6 +899,7 @@ function print_usage {
     Options:
         -a,--apt            : Install apt packages.
         -ap,--apm           : Install apm packages.
+        -C,--checkfiles     : Just check for required list files.
         -c,--config         : Install config from cj-config repo.
         -D,--debug          : Print some debug info while running.
         -d,--dryrun         : Don't do anything, just print the commands.
@@ -1076,6 +1110,7 @@ dry_run=0
 do_all=1
 do_apm=0
 do_apt=0
+do_check=0
 do_config=0
 do_debfiles=0
 do_dotfiles=0
@@ -1111,6 +1146,9 @@ for arg; do
         "-c"|"--config" )
             do_config=1
             do_all=0
+            ;;
+        "-C"|"--checkfiles" )
+            do_check=1
             ;;
         "-d"|"--dryrun" )
             dry_run=1
@@ -1207,7 +1245,15 @@ done
 
 debug_depends
 
-if ((do_update)); then
+if ((do_check)); then
+    check_required_files || {
+        # Missing files are printed on error.
+        exit 1
+    }
+    # All files were found.
+    print_required_files "existing"
+    exit 0
+elif ((do_update)); then
     update_pkg_lists || {
         echo_err "Failed to update some package lists ($?)."
         exit 1

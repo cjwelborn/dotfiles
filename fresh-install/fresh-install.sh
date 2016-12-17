@@ -937,7 +937,7 @@ function print_usage {
         $appscript (-C | -u) [-D]
         $appscript [-f2] [-f3] [-fp] [-D]
         $appscript [-l] [-l2] [-l3] [-lc] [-ld] [-lg] [-li] [-D]
-        $appscript [-a] [-ap] [-c] [-f] [-g] [-gc] [-p] [-p2] [-p3] [-D]
+        $appscript [-a] [-ap] [-c] [-f] [-g] [-gc] [-i] [-p] [-p2] [-p3] [-D]
 
     Options:
         -a,--apt            : Install apt packages.

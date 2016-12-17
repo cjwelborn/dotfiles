@@ -86,27 +86,11 @@ if [[ -d $cjhome/node_modules/.bin ]] && [[ -x $cjhome/node_modules/.bin ]]; the
 fi
 
 # Cargo installed binaries.
-# /home/cj/.multirust/toolchains/nightly/cargo/bin
-if [[ -d "$cjhome/.multirust/toolchains" ]] && [[ -x "$cjhome/.multirust/toolchains" ]]; then
-    export MULTIRUST_TOOLCHAIN_DIR="$cjhome/.multirust/toolchains"
-    shopt -s nullglob
-    # Get all multirust toolchain dirs.
-    multirust_dirs=("$MULTIRUST_TOOLCHAIN_DIR"/*)
-    if (( ${#multirust_dirs[@]} > 0 )); then
-        for multirust_dir in "${multirust_dirs[@]}"; do
-            multirust_bin_dir="$multirust_dir/cargo/bin"
-            if [[ -d "$multirust_bin_dir" ]]; then
-                # Add this multirust toolchain's bin dir to PATH.
-                export PATH="$PATH:${multirust_bin_dir}"
-            fi
-        done
-        # Shouldn't be available after init.
-        unset multirust_dir multirust_bin_dir
-    fi
-    # These shouldn't be available after init.
-    unset multirust_dirs
-    shopt -u nullglob
+cargo_bin_dir="$cjhome/.cargo/bin"
+if [[ -d "$cargo_bin_dir" ]]; then
+    export PATH="$PATH:$cargo_bin_dir"
 fi
+unset cargo_bin_dir
 
 # Node version manager.
 if [[ -d "$cjhome/.nvm" ]] && [[ -x "$cjhome/.nvm" ]]; then

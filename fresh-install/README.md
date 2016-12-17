@@ -26,8 +26,7 @@ File|Desc.
 ---:|---
 `./pkgs.txt` | List of debian package names to install with `apt`. This list can be generated with `--update` or `--findpackages`.
 `./debs` | Directory containing Debian package files to install with `dpkg`. These files must be placed manually.
-`./remote-debs.txt` | List of names/urls to download debian packages and
-install with `dpkg`. This list must be created manually.
+`./remote-debs.txt` | List of names/urls to download debian packages and install with `dpkg`. This list must be created manually.
 
 ### Apm
 

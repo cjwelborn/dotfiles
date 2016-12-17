@@ -13,12 +13,15 @@
 #   git clones (from a list.txt)
 #
 # -Christopher Welborn 05-31-2016
+
+# Include hidden files in globbing.
 shopt -s dotglob
+# Allow empty arrays/strings when globbing finds no matches.
 shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.2.9"
+appversion="0.3.0"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -42,6 +45,12 @@ filename_pkgs="$appdir/pkgs.txt"
 filename_pip2_pkgs="$appdir/pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/pip3-pkgs.txt"
 filename_remote_debs="$appdir/remote-debs.txt"
+dir_installscripts="$appdir/installscripts"
+declare -a install_scripts
+if [[ -d "$dir_installscripts" ]]; then
+    install_scripts=(${dir_installscripts}/*.sh)
+fi
+
 required_files=(
     "$filename_apm"
     "$filename_gems"
@@ -59,6 +68,15 @@ declare -A failed_cmds
 
 # This can be set with the --debug flag.
 debug_mode=0
+
+function add_failed_cmd {
+    # Add a command to the failed_cmds global associative array.
+    # Arguments:
+    #   $1 : The command that was tried.
+    #   $2 : A message for the failure.
+    debug "Adding failed_cmd: $1"
+    failed_cmds[$1]=$2
+}
 
 function check_required_files {
     # Check for at least one required file before continuing.
@@ -630,7 +648,7 @@ function install_git_clone {
         echo_err "The project may need to be compiled..."
         # Add this to failed cmds, to remind about it later.
         local lncmd="ln -s ${lnargs[*]}"
-        failed_cmds[$lncmd]=("Missing clone executable: $exepath")
+        add_failed_cmd "$lncmd" "Missing clone executable: $exepath"
         return 1
     fi
     if ! ln -s "${lnargs[@]}"; then
@@ -795,6 +813,22 @@ function list_file {
     done
 }
 
+function list_installscripts {
+    # List install scripts in $dir_installscripts.
+    ((${#install_scripts[@]})) || {
+        echo_err "No install scripts found in $dir_installscripts."
+        return 1
+    }
+    local plural="scripts"
+    ((${#install_scripts[@]} == 1)) && plural="script"
+    printf "\nFound %s install %s in %s:\n" "${#install_scripts[@]}" "$plural" "$dir_installscripts"
+    local scriptpath
+    for scriptpath in "${install_scripts[@]}"; do
+        printf "    %s\n" "$scriptpath"
+    done
+    return 0
+}
+
 function make_dir {
     # Make a directory if it doesn't exist alredy, unless dry_run is set.
     local dirpath=$1
@@ -893,7 +927,7 @@ function print_usage {
         $appscript -h | -v
         $appscript (-C | -u) [-D]
         $appscript [-f2] [-f3] [-fp] [-D]
-        $appscript [-l] [-l2] [-l3] [-lc] [-ld] [-lg] [-D]
+        $appscript [-l] [-l2] [-l3] [-lc] [-ld] [-lg] [-li] [-D]
         $appscript [-a] [-ap] [-c] [-f] [-g] [-gc] [-p] [-p2] [-p3] [-D]
 
     Options:
@@ -919,6 +953,7 @@ function print_usage {
         -g,--gems           : Install ruby gem packages.
         -gc,--gitclones     : Install git clones.
         -h,--help           : Show this message.
+        -i,--installscripts : Run install scripts in ${dir_installscripts}.
         -l,--list           : List apt packages in ${filename_pkgs##*/}.
         -l2,--listpip2      : List pip2 packages in ${filename_pip2_pkgs##*/}.
         -l3,--listpip3      : List pip3 packages in ${filename_pip3_pkgs##*/}.
@@ -927,6 +962,7 @@ function print_usage {
         -ld,--listdebs      : List all .deb files in ./debs, and remote
                               packages in ${filename_remote_debs##*/}.
         -lg,--listgems      : List gem package names in ${filename_gems##*/}.
+        -li,--listscripts   : List install scripts in ${dir_installscripts}.
         -p,--debfiles       : Install ./debs/*.deb packages.
         -p2,--pip2          : Install pip2 packages.
         -p3,--pip3          : Install pip3 packages.
@@ -986,8 +1022,28 @@ function run_cmd {
         echo "    $cmd"
     else
         # Run command and add it to failed_cmds if it fails.
-        eval "$cmd" || failed_cmds[$cmd]=$2
+        eval "$cmd" || add_failed_cmd "$cmd" "$2"
     fi
+}
+
+function run_install_scripts {
+    # Run all install scripts found in $dir_installscripts.
+    ((${#install_scripts[@]})) || {
+        echo_err "No install scripts to run."
+        return 1
+    }
+    local scriptname scriptpath errs=0
+    for scriptpath in "${install_scripts[@]}"; do
+        scriptname="${scriptpath##*/}"
+        if [[ ! -x "$scriptpath" ]]; then
+            if ! run_cmd "chmod +x '$scriptpath'" "Making install script executable: $scriptname"; then
+                let errs+=1
+                continue
+            fi
+        fi
+        run_cmd ".$scriptpath" "Running install script: $scriptname" || let errs+=1
+    done
+    return $errs
 }
 
 function status {
@@ -1121,6 +1177,7 @@ do_findpip2=0
 do_findpip3=0
 do_gems=0
 do_gitclones=0
+do_installscripts=0
 do_listing=0
 do_list=0
 do_listapm=0
@@ -1129,6 +1186,7 @@ do_listdebs=0
 do_listgems=0
 do_listpip2=0
 do_listpip3=0
+do_listscripts=0
 do_pip2=0
 do_pip3=0
 do_update=0
@@ -1188,6 +1246,10 @@ for arg; do
             print_usage ""
             exit 0
             ;;
+        "-i"|"--installscripts" )
+            do_installscripts=1
+            do_all=0
+            ;;
         "-l"|"--list" )
             do_listing=1
             do_list=1
@@ -1208,13 +1270,17 @@ for arg; do
             do_listing=1
             do_listclones=1
             ;;
+        "-ld"|"--listdebs" )
+            do_listing=1
+            do_listdebs=1
+            ;;
         "-lg"|"--listgems" )
             do_listing=1
             do_listgems=1
             ;;
-        "-ld"|"--listdebs" )
+        "-li"|"--listscripts" )
             do_listing=1
-            do_listdebs=1
+            do_listscripts=1
             ;;
         "-p"|"--debfiles" )
             do_debfiles=1
@@ -1298,6 +1364,9 @@ elif ((do_listing)); then
     ((do_listpip3)) && {
         list_file "$filename_pip3_pkgs" || echo_err "Failed to list pip3 packages."
     }
+    ((do_listscripts)) && {
+        list_installscripts || echo_err "Failed to list install scripts."
+    }
 
     list_failures && exit 1
     exit
@@ -1360,7 +1429,13 @@ if ((do_all || do_gitclones)); then
         ((dry_run)) && echo_err "...git clones will always fail on a dry run."
     }
 fi
-# Pre-compiled binaries.
+if ((do_all || do_installscripts)); then
+    run_install_scripts || {
+        echo_err "Failed to run some install scripts in $dir_installscripts ($?)!"
+    }
+fi
+
+# Pre-compiled binaries (not handled by fresh-install).
 if ((do_all)); then
     # Add a note about pre-compiled binaries that fresh-install doesn't handle yet.
     declare -A compiledexes=(

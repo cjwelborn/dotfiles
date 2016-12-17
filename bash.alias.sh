@@ -303,12 +303,16 @@ function mkdircd()
 		echo "Usage: mkdircd DIR"
 		return 1
 	fi
-	if ! mkdir -p "$1" && cd "$1"; then
-		echo "Failed to make and cd to dir: $1" 1>&2
+	if ! mkdir -p "$1"; then
+		echo "Failed to make dir: $1" 1>&2
 		return 1
 	fi
 	echo "Created $1"
-	echo "Moved to $(pwd)"
+	if ! cd "$1"; then
+		echo "Failed to cd to dir: $1" 1>&2
+		return 1
+	fi
+	echo "Moved to $PWD"
 	return 0
 }
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Downloads rustup.sh, and then runs it.
+# This is a little safer than just `curl "$rustup_url" -Ssf | sh`.
 # -Christopher Welborn 12-17-2016
 appname="Rustup Installer"
 appversion="0.0.1"
@@ -8,6 +9,7 @@ apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
 
+# Url serving up rustup.sh.
 rustup_url="https://sh.rustup.rs"
 # Where rustup.sh is downloaded to by default.
 rustup_script="$appdir/rustup.sh"

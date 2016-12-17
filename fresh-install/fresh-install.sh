@@ -21,7 +21,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.3.0"
+appversion="0.3.1"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"

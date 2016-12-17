@@ -45,10 +45,19 @@ filename_pkgs="$appdir/pkgs.txt"
 filename_pip2_pkgs="$appdir/pip2-pkgs.txt"
 filename_pip3_pkgs="$appdir/pip3-pkgs.txt"
 filename_remote_debs="$appdir/remote-debs.txt"
+# Install script information:
 dir_installscripts="$appdir/installscripts"
-declare -a install_scripts
+declare -a install_script_files install_scripts
 if [[ -d "$dir_installscripts" ]]; then
-    install_scripts=(${dir_installscripts}/*.sh)
+    # Get ALL files in ./installscripts, but only used script-like files.
+    # The file will be made executable later, if not already executable.
+    install_script_files=(${dir_installscripts}/*)
+    # Files that AREN'T install scripts for sure (by extension):
+    install_script_pat='(~)|(.bak)|(.md)|(.tmp)|(.rst)|(.txt)$'
+    for scriptpath in "${install_script_files[@]}"; do
+        [[ -e "$scriptpath" ]] || continue
+        [[ ! "$scriptpath" =~ $install_script_pat ]] && install_scripts+=("$scriptpath")
+    done
 fi
 
 required_files=(
@@ -1430,9 +1439,13 @@ if ((do_all || do_gitclones)); then
     }
 fi
 if ((do_all || do_installscripts)); then
-    run_install_scripts || {
-        echo_err "Failed to run some install scripts in $dir_installscripts ($?)!"
-    }
+    if ((${#install_scripts[@]})); then
+        run_install_scripts || {
+            echo_err "Failed to run some install scripts in $dir_installscripts ($?)!"
+        }
+    else
+        echo_err "No install scripts to run in: $dir_installscripts"
+    fi
 fi
 
 # Pre-compiled binaries (not handled by fresh-install).

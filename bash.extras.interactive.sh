@@ -124,11 +124,11 @@ unset -f set_less_colors
 
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
 fzf_source="$cjhome/.fzf.bash"
-[[ -f "$fzf_source" ]] &&  {
+if [[ -f "$fzf_source" ]] && hash fzf; then
     bashextraslog "Loading fzf keybindings from: $fzf_source"
     source "$fzf_source"
     echo "Fzf fuzzy finder available: Ctrl + T"
-}
+fi
 unset fzf_source
 
 # ------------------------------- PROMPT FUNCTIONS ---------------------------

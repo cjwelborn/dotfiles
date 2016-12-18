@@ -122,6 +122,15 @@ function set_less_colors() {
 set_less_colors
 unset -f set_less_colors
 
+# ---------------------- FZF Fuzzy Finder keybindings. ----------------------
+fzf_source="$cjhome/.fzf.bash"
+[[ -f "$fzf_source" ]] &&  {
+    bashextraslog "Loading fzf keybindings from: $fzf_source"
+    source "$fzf_source"
+    echo "Fzf fuzzy finder available: Ctrl + T"
+}
+unset fzf_source
+
 # ------------------------------- PROMPT FUNCTIONS ---------------------------
 # Set Hilite Color for 3rd Party Prompts
 if [[ "${DISPLAY%%:0*}" != "" ]]; then

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Bash Global Variables for Cj
 # Purposely hardcoded '/home/cj/' into this,
 # though easily changeable through $Home.
@@ -8,6 +9,18 @@
 #   source bash.variables.sh
 #
 # -Christopher Welborn 8-9-14
+
+defined_colr=0
+if ! hash colr; then
+    defined_colr=1
+    function colr {
+        echo -e "$1"
+    }
+fi
+
+function bashvarsecho {
+    [ -n "$PS1" ] && colr "$1" "blue"
+}
 
 # Root for frequently used dirs.
 export Home='/home/cj'
@@ -89,4 +102,9 @@ export Gtkthemessys="$Gtkthemessystem"
 # Beep sound file to play with the new 'beep' alias.
 export BEEP="/usr/share/sounds/KDE-Im-Message-In.ogg"
 
-[ -n "$PS1" ] && echo "Variables loaded... (bash.variables.sh)"
+bashvarsecho "Variables loaded... (bash.variables.sh)"
+
+# Remove some definitions that are only needed for this script.
+unset -f bashvarsecho
+((defined_colr)) && unset -f colr
+unset defined_colr

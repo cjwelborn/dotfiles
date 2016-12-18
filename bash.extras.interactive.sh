@@ -29,6 +29,17 @@ function bashextraslog {
     echo -e "$@" >> "$bashextraslogfile"
 }
 echo "Loading bash.extras.interactive.sh, cjhome=$cjhome" > "$bashextraslogfile"
+defined_colr=0
+if ! hash colr; then
+    defined_colr=1
+    function colr {
+        echo -e "$1"
+    }
+fi
+
+function bashextrasecho {
+    colr "$1" "green"
+}
 
 # Set font if using a tty (1-6).
 if [[ "$TERM" == "linux" ]]; then
@@ -124,10 +135,10 @@ unset -f set_less_colors
 
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
 fzf_source="$cjhome/.fzf.bash"
-if [[ -f "$fzf_source" ]] && hash fzf; then
+if [[ -f "$fzf_source" ]] && [[ -e "$cjhome/clones/fzf/bin/fzf" ]]; then
     bashextraslog "Loading fzf keybindings from: $fzf_source"
     source "$fzf_source"
-    echo "Fzf fuzzy finder available: Ctrl + T"
+    bashextrasecho "Fzf fuzzy finder available: Ctrl + T"
 fi
 unset fzf_source
 
@@ -406,3 +417,6 @@ goto_last_session_dir
 # Remove logging vars/funcs.
 unset -v bashextraslogfile
 unset -f bashextraslog
+unset -f bashextrasecho
+((defined_colr)) && unset -f colr
+unset defined_colr

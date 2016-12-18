@@ -3,7 +3,10 @@
 # ~/.local/bin by fresh-install.sh.
 
 # The format is: relative-executable-path-in-repo=repo-url
+# If the relative executable ends with .py or .sh, the extension will be
+# removed on the symlink.
 
+# ---------------------------- Third party tools ----------------------------
 # Dreampie Python REPL GUI.
 dreampie=https://github.com/noamraph/dreampie.git
 # Rust linting tool, used by editor plugins.
@@ -15,5 +18,26 @@ googler=https://github.com/jarun/googler.git
 # Creates spark lines in the terminal.
 spark=https://github.com/holman/spark.git
 # A good terminal google searcher.
-googler=git://github.com/jarun/googler.git
+googler=https://github.com/jarun/googler.git
 
+# ------------------------------ Personal tools ------------------------------
+# *** These are disabled, because I don't want them in ~/clones. ***
+# *** It is kept here as a reminder to get these scripts in the future ***
+# # Bash debugger.
+# bashdebug.sh=https://github.com/welbornprod/bashdebug.git
+# # New file creator.
+# new.py=https://github.com/welbornprod/new.git
+# # File attributes editor/viewer.
+# filetags.py=https://github.com/welbornprod/filetags.git
+# # Todo list editor.
+# todo.py=https://github.com/welbornprod/todo.git
+# # Python TimeIt helper script.
+# timeitcomp.sh=https://github.com/welbornprod/timeitcompare.git
+# # Colorized cat command.
+# ccat.py=https://github.com/welbornprod/ccat.git
+# # Sudo editor helper.
+# cedit.py=https://github.com/welbornprod/cedit.git
+# # Websters dictionary tool.
+# define.py=https://github.com/welbornprod/define.git
+# # English->Spanish translation tool.
+# spanish.py=https://github.com/welbornprod/spanish.git

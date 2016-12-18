@@ -639,6 +639,12 @@ function install_git_clone {
         return 1
     fi
     local exename="${relexepath##*/}" gitargs=("$@") clonedir=~/clones
+    # Remove .py,.sh extensions for symlinking.
+    local extpat='(.py)|(.sh)$'
+    if [[ "$exename" =~ $extpat ]]; then
+        exename="${exename%.*}"
+        debug "Removed extension for cloned executable: $exename"
+    fi
     make_dir "$clonedir/$exename" || return 1
     local homebin=~/.local/bin
     make_dir "$homebin" || return 1

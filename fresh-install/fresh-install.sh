@@ -1386,7 +1386,7 @@ check_required_files || exit 1
 
 # System apt packages.
 if ((do_all || do_apt)); then
-    run_cmd "sudo apt-get update" "Upgrading the packages list..."
+    run_cmd "sudo apt-get update" "Updating the packages list..."
     install_apt_packages || {
         echo_err "Failed to install some apt packages ($?)\n    ...this may be okay though."
     }

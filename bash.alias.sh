@@ -45,6 +45,7 @@ alias lynxdump="lynx -dump -nonumbers -nolist -width=160" # A simple lynx dump, 
 alias mkdir="mkdir -p" # Prevents clobbering files
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3" # Sort 'ps' list of processes by CPU consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4" # Sorts 'ps' list of processes by memory consumption.
+# shellcheck disable=SC2142
 alias netstatcount="netstat -n | awk '{print \$1}' | egrep -v 'Proto|Active' | sort | uniq -c" # Use netstat to count socket types that are currently open.
 alias npminstall="npm install --prefix=\$HOME" # Use npm install with a prefix set to $HOME
 alias perlmods="cpan -l | sort" # List all installed perl modules (shortcode for cpan -l)
@@ -57,6 +58,7 @@ alias profilestackless="stackless -m cProfile" # Profile a stackless script usin
 alias pwd="pwd -P" # show actual directory (not symlink)
 alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.html"' # Views the documentation pages for PyKDE using chrome.
 alias servers="sudo netstat -ltupn" # Show all listening servers on this machine.
+alias shfmt="shfmt -i 4" # Use 4 spaces always with shfmt.
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io" # SSH into koding.com vm (with XForwarding)
 alias temp="which sensors &>/dev/null && sensors -f" # Show temperature for machines with 'sensors' installed.
 alias tmux="tmux -2" # Use 256 colors with tmux.

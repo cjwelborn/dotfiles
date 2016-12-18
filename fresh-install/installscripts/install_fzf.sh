@@ -91,4 +91,16 @@ if ((do_dryrun)); then
     else
         fail "Install script was missing: ./install"
     fi
+
+    compsrc=~/clones/fzf/shell/completion.bash
+    compdest=/etc/bash_completion.d/fzf
+    if [[ -e "$compdest" ]]; then
+        echo_err "Completion file already exists: $compdest"
+    else
+        if [[ -e "$compsrc" ]]; then
+            run_cmd sudo cp "$compsrc" "$compdest" || fail "Failed to copy bash completions!"
+        else
+            echo_err "Missing bash completion file: $compsrc"
+        fi
+    fi
 fi

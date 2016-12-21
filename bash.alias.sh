@@ -293,8 +293,8 @@ function fzfp() {
 	# Don't highlight binary files, if highlight fails, fallback to cat.
 	local highlightcmd
 	highlightcmd="(
-		$highlighter \$PWD/{} || \
-		if [[ \$(file \$PWD/{}) =~ text ]]; then \
+		$highlighter {} || \
+		if [[ \$(file {}) =~ text ]]; then \
 			cat {}; \
 		else \
 			echo 'Binary file, no preview available.'; \

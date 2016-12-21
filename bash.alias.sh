@@ -191,55 +191,6 @@ function echo_err()
 	: :
 }
 
-function echo_failure()
-{
-	# print a red FAILURE message about 71 columns in
-	# all of these were inspired by Fedora's (i think) init.d/functions"
-	local colnumber="${1:-71}"
-	# move to position
-	echo -en "\\033[${colnumber}G"
-	# shellcheck disable=SC2154
-	echo -en "$red"
-	echo -n '['
-	echo -en "$RED"
-	echo -n 'FAILURE'
-	echo -en "$red"
-	echo ']'
-}
-
-function echo_success()
-{
-	# print a green 'SUCCESS' msg about 71 columns in
-	# all of these were inspired by Fedora's (i think) init.d/functions"
-	local colnumber="${1:-71}"
-	# move to position
-	echo -en "\\033[${colnumber}G"
-	# shellcheck disable=SC2154
-	echo -en "$green"
-	echo -n '['
-	echo -en "$LIGHTGREEN"
-	echo -n 'SUCCESS'
-	echo -en "$green"
-	echo ']'
-
-}
-
-function echo_warning()
-{
-	# print a yellow WARNING msg about 71 columns in
-	# all of these were inspired by Fedora's (i think) init.d/functions"
-	local colnumber="${1:-71}"
-	# move to position
-	echo -en "\\033[${colnumber}G"
-	# shellcheck disable=SC2154
-	echo -en "$lightyellow"
-	echo -n '['
-	echo -en "$YELLOW"
-	echo -n 'WARNING'
-	echo -en "$lightyellow"
-	echo ']'
-}
-
 function fe()
 {
 	# find file and execute command on it
@@ -436,9 +387,9 @@ function portscan()
 
 function print_failure()
 {
-	# display a custom failure message using echo_failure
+	# display a custom failure message using write_failure
 	echo -e -n "$@"
-	echo_failure "$((${COLUMNS:-80} - 10))"
+	write_failure "$((${COLUMNS:-80} - 10))"
 }
 
 function print_status()
@@ -467,16 +418,16 @@ function print_status()
 
 function print_success()
 {
-	# displays a custom success msg using echo_success
+	# displays a custom success msg using write_success
 	echo -e -n "$@"
-	echo_success "$((${COLUMNS:-80} - 10))"
+	write_success "$((${COLUMNS:-80} - 10))"
 }
 
 function print_warning()
 {
-	# displays custom warning message using echo_warning
+	# displays custom warning message using write_warning
 	echo -e -n "$@"
-	echo_warning "$((${COLUMNS:-80} - 10))"
+	write_warning "$((${COLUMNS:-80} - 10))"
 }
 
 function pscores()
@@ -692,6 +643,56 @@ function wpprofile()
 	./manage runprofileserver --kcachegrind "--prof-path=/home/cj/dump/wp-profile" "127.0.0.1:8080"
 }
 
+
+function write_failure()
+{
+	# print a red FAILURE message about 71 columns in
+	# all of these were inspired by Fedora's (i think) init.d/functions"
+	local colnumber="${1:-71}"
+	# move to position
+	echo -en "\\033[${colnumber}G"
+	# shellcheck disable=SC2154
+	echo -en "$red"
+	echo -n '['
+	echo -en "$RED"
+	echo -n 'FAILURE'
+	echo -en "$red"
+	echo ']'
+}
+
+function write_success()
+{
+	# print a green 'SUCCESS' msg about 71 columns in
+	# all of these were inspired by Fedora's (i think) init.d/functions"
+	local colnumber="${1:-71}"
+	# move to position
+	echo -en "\\033[${colnumber}G"
+	# shellcheck disable=SC2154
+	echo -en "$green"
+	echo -n '['
+	echo -en "$LIGHTGREEN"
+	echo -n 'SUCCESS'
+	echo -en "$green"
+	echo ']'
+
+}
+
+function write_warning()
+{
+	# print a yellow WARNING msg about 71 columns in
+	# all of these were inspired by Fedora's (i think) init.d/functions"
+	local colnumber="${1:-71}"
+	# move to position
+	echo -en "\\033[${colnumber}G"
+	# shellcheck disable=SC2154
+	echo -en "$lightyellow"
+	echo -n '['
+	echo -en "$YELLOW"
+	echo -n 'WARNING'
+	echo -en "$lightyellow"
+	echo ']'
+}
+
 function ziplist()
 {
 	# list files in a zip file
@@ -715,9 +716,6 @@ export camrecord
 export cdgodir
 export cdsym
 export echo_err
-export echo_failure
-export echo_success
-export echo_warning
 export fe
 export ff
 export inetinfo
@@ -751,4 +749,7 @@ export wpcd
 export wpfcgi
 export wpmemory
 export wpprofile
+export write_failure
+export write_success
+export write_warning
 export ziplist

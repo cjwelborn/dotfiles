@@ -27,7 +27,6 @@ alias clearscreen='echo -e "\033[2J\033[?25l"' # Clears the BASH screen by trick
 alias dirs="dirs -v" # Vertical directory listing for 'dirs', with indexes.
 alias distupgrade="sudo apt-get update && sudo apt-get dist-upgrade" # Sudo update and dist-upgrade.
 alias echo_path="echo \$PATH | tr ':' '\n'" # Echo $PATH, with newlines.
-alias exal="exa -abghHliS" # Run exa with a long, detailed view.
 alias greenv="green -vv" # Run green with -vv for more verbosity.
 alias grep="grep -E --color=always" # use colors and regex for grep always
 alias howdoi="howdoi -c" # use colors for howdoi.
@@ -190,6 +189,66 @@ function echo_err()
 	# Alias manager crap.
 	: :
 }
+
+function exal()
+{
+	# Use `exa` to list files in the directory. Use -T for tree view.
+
+	# Make sure exa is available, otherwise print some helpful info.
+	hash exa || {
+		printf "
+\`exa\` is not installed.
+You can get it at: https://github.com/ogham/exa
+Or run: \`cargo install --git https://github.com/ogham/exa\`
+" 1>&2
+		return 1
+	}
+	declare -a user_args
+	# Options for all views.
+	declare -a default_opts=(
+		"--sort" "name"
+	 	"--group-directories-first"
+	)
+	# Extra +a,--nohidden option for disabling --all.
+	local arg do_all=1 do_help=0
+	for arg in "$@"; do
+		if [[ "$arg" == "+a" ]] || [[ "$arg" == "--nohidden" ]]; then
+			do_all=0
+		else
+			if [[ "$arg" == "-h" ]] || [[ "$arg" == "--help" ]]; then
+				do_help=1
+			fi
+			user_args+=("$arg")
+		fi
+	done
+	((do_all)) && default_opts+=("--all")
+
+	# Columns to show for long-views.
+	declare -a long_opts=(
+		"--long"
+		"--binary"
+		"--blocks"
+		"--group"
+		"--header"
+		"--inode"
+		"--links"
+	)
+	# Build exa options to use.
+	declare -a exa_args
+	exa_args+=("${default_opts[@]}")
+	# Conflicting --long view args.
+	# 	-1, --oneline      display one entry per line
+	# 	-x, --across       sort multi-column view entries across
+	local long_conflict_pat='(-1)|(--oneline)|(-x)|(--across)'
+	[[ ! "$*" =~ $long_conflict_pat ]] && exa_args+=("${long_opts[@]}")
+
+	exa "${exa_args[@]}" "${user_args[@]}"
+	((do_help)) && printf "
+Extra arguments provided by the \`exal\` function:
+  +a, --nohidden     don't use --all, or don't show hidden files.
+"
+}
+
 
 function fe()
 {
@@ -716,6 +775,7 @@ export camrecord
 export cdgodir
 export cdsym
 export echo_err
+export exal
 export fe
 export ff
 export inetinfo

@@ -155,6 +155,16 @@ function camrecord()
 	fi
 }
 
+function ccatp()
+{
+	# Use fzfp to select a file, and then ccat it.
+	declare -a filenames
+	# shellcheck disable=SC2119
+	filenames=($(fzfp --multi))
+	# If no filename is selected, don't ccat it.
+	((${#filenames[@]})) && ccat "$@" "${filenames[@]}"
+}
+
 function cdgodir()
 {
 	# Change to dir reported by godir.
@@ -268,6 +278,30 @@ function ff()
 	find . -type f -iname "*${1:-}*" -ls ;
 	# Force function for alias manager.
 	: :
+}
+
+# shellcheck disable=SC2120
+function fzfp() {
+	# Use fzf to select a file, with preview.
+	# Number of lines to show in the preview.
+	local linecnt=$((${LINES:-$(tput lines)} - 2))
+	local highlighter="highlight -O ansi"
+	# Ccat is slower, there is a noticeable delay when previewing :(.
+	# highlighter="ccat --format terminal --colors"
+
+	# Tell fzf how to preview the file, {} is replaced with the filepath.
+	# Don't highlight binary files, if highlight fails, fallback to cat.
+	local highlightcmd
+	highlightcmd="(
+		$highlighter \$PWD/{} || \
+		if [[ \$(file \$PWD/{}) =~ text ]]; then \
+			cat {}; \
+		else \
+			echo 'Binary file, no preview available.'; \
+		fi\
+		) 2>/dev/null | head -n${linecnt}
+	"
+	printf "%s" "$(fzf "$@" --preview "$highlightcmd")"
 }
 
 function inetinfo()
@@ -772,12 +806,14 @@ export asciimovie
 export ask
 export birthday
 export camrecord
+export ccatp
 export cdgodir
 export cdsym
 export echo_err
 export exal
 export fe
 export ff
+export fzfp
 export inetinfo
 export kd
 export mkdircd

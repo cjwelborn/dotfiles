@@ -136,7 +136,7 @@ unset -f set_less_colors
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
 function fzf_setup {
     local fzf_source="$cjhome/.fzf.bash"
-    if [[ ! -f "$fzf_source" ]] || ! hash fzf; then
+    if [[ ! -f "$fzf_source" ]] || ! hash "$cjhome/clones/fzf/bin/fzf" 2>/dev/null; then
         # Missing fzf executable or bash file.
         return 1
     fi
@@ -151,17 +151,20 @@ function fzf_setup {
         # Use ccat from https://github.com/welbornprod/ccat
         highlighter="ccat --colors --format terminal"
     fi
-    local highlightcmd="(
-        $highlighter {} || \
-        if [[ \$(file {}) =~ text ]]; then \
-            cat {}; \
-        else \
-            echo 'Binary file, no preview available.'; \
-        fi\
-        ) 2>/dev/null | head -n${fzfpreviewlinecnt}
-    "
+    declare -a highlightcmd=(
+        "("
+        "$highlighter {} ||"
+        # Everything must be double escaped, because it is ran through
+        # fzf/shell/key-bindings.bash.
+        "if [[ \\\$(file {}) =~ text ]]; then"
+        "    cat {};"
+        "else"
+        "    echo 'Binary file, no preview available.';"
+        "fi"
+        ") 2>/dev/null | head -n${fzfpreviewlinecnt}"
+    )
 
-    export FZF_CTRL_T_OPTS="--preview '$highlightcmd'"
+    export FZF_CTRL_T_OPTS="--preview \"${highlightcmd[*]}\""
     bashextraslog "Loading fzf keybindings from: $fzf_source"
     source "$fzf_source"
     bashextrasecho "Fzf fuzzy finder available: Ctrl + T"

@@ -158,11 +158,7 @@ function camrecord()
 function ccatp()
 {
 	# Use fzfp to select a file, and then ccat it.
-	declare -a filenames
-	# shellcheck disable=SC2119
-	filenames=($(fzfp --multi))
-	# If no filename is selected, don't ccat it.
-	((${#filenames[@]})) && ccat "$@" "${filenames[@]}"
+	fzfcmd ccat
 }
 
 function cdgodir()
@@ -280,6 +276,34 @@ function ff()
 	: :
 }
 
+function fzfcmd()
+{
+	# Use fzfp to select a file, and then run cmd with it.
+	local cmd=$1
+	shift
+	declare -a cmdargs=("$@")
+	declare -a filenames
+	filenames=($(fzfp --multi))
+	# If no filename is selected, don't run it.
+	((${#filenames[@]})) && "$cmd" "${cmdargs[@]}" "${filenames[@]}"
+}
+
+function fzfcmddir()
+{
+	# Use fzfp to select a file from a certain dir, and then run cmd with it.
+	local userdir=$1 cmd=$2
+	shift 2
+	{ [[ -n "$userdir" ]] && [[ -n "$cmd" ]]; } || {
+		echo_err "Usage: fzfcmddir DIR CMD [ARGS...]"
+		return 1
+	}
+	declare -a cmdargs=("$@")
+	declare -a filenames
+	filenames=($(fzfdir "$userdir"))
+	# If no filename is selected, don't run it.
+	((${#filenames[@]})) && "$cmd" "${cmdargs[@]}" "${filenames[@]}"
+}
+
 # shellcheck disable=SC2120
 function fzfp() {
 	# Use fzf to select a file, with preview.
@@ -302,6 +326,12 @@ function fzfp() {
 		) 2>/dev/null | head -n${linecnt}
 	"
 	printf "%s" "$(fzf "$@" --preview "$highlightcmd")"
+}
+
+function fzfdir {
+	# Use fzf to select a file in a certain directory, and print the filename.
+	# Uses the fzfp function to select the file.
+	find "${1:-$PWD}" | fzfp --multi
 }
 
 function inetinfo()
@@ -813,6 +843,9 @@ export echo_err
 export exal
 export fe
 export ff
+export fzfcmd
+export fzfcmddir
+export fzfdir
 export fzfp
 export inetinfo
 export kd

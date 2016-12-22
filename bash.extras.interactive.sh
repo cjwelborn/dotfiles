@@ -134,13 +134,41 @@ set_less_colors
 unset -f set_less_colors
 
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
-fzf_source="$cjhome/.fzf.bash"
-if [[ -f "$fzf_source" ]] && [[ -e "$cjhome/clones/fzf/bin/fzf" ]]; then
+function fzf_setup {
+    local fzf_source="$cjhome/.fzf.bash"
+    if [[ ! -f "$fzf_source" ]] || ! hash fzf; then
+        # Missing fzf executable or bash file.
+        return 1
+    fi
+    # Use terminal height - 2, to allow for the box border.
+    local fzfpreviewlinecnt=$((${LINES:-$(tput lines)} - 2))
+    # If no other highlighter is found, just use cat.
+    highlighter="cat"
+    if hash highlight; then
+        # Use the 'highlight' command from apt packages.
+        highlighter="highlight -O ansi"
+    elif hash ccat; then
+        # Use ccat from https://github.com/welbornprod/ccat
+        highlighter="ccat --colors --format terminal"
+    fi
+    local highlightcmd="(
+        $highlighter {} || \
+        if [[ \$(file {}) =~ text ]]; then \
+            cat {}; \
+        else \
+            echo 'Binary file, no preview available.'; \
+        fi\
+        ) 2>/dev/null | head -n${fzfpreviewlinecnt}
+    "
+
+    export FZF_CTRL_T_OPTS="--preview '$highlightcmd'"
     bashextraslog "Loading fzf keybindings from: $fzf_source"
     source "$fzf_source"
     bashextrasecho "Fzf fuzzy finder available: Ctrl + T"
-fi
-unset fzf_source
+    return 0
+}
+fzf_setup || bashextraslog "No fzf available..."
+unset -f fzf_setup
 
 # ------------------------------- PROMPT FUNCTIONS ---------------------------
 # Set Hilite Color for 3rd Party Prompts

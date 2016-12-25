@@ -17,6 +17,8 @@ dark-flat-ui
 ficus-syntax
 git-time-machine
 highlight-selected
+hyperclick
+language-awk
 language-bats
 language-cpp14
 language-python-django-templates

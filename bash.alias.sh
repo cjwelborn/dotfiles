@@ -293,10 +293,10 @@ function fzfcmddir()
 	# Use fzfp to select a file from a certain dir, and then run cmd with it.
 	local userdir=$1 cmd=$2
 	shift 2
-	{ [[ -n "$userdir" ]] && [[ -n "$cmd" ]]; } || {
-		echo_err "Usage: fzfcmddir DIR CMD [ARGS...]"
+	if [[ ! -d "$userdir" ]] || [[ -z "$cmd" ]]; then
+		echo_err "Usage: fzfcmddir DIR CMD [CMD_ARGS...]"
 		return 1
-	}
+	fi
 	declare -a cmdargs=("$@")
 	declare -a filenames
 	filenames=($(fzfdir "$userdir"))

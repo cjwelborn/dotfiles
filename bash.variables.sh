@@ -11,7 +11,7 @@
 # -Christopher Welborn 8-9-14
 
 defined_colr=0
-if ! hash colr; then
+if ! hash colr 2>/dev/null; then
     defined_colr=1
     function colr {
         echo -e "$1"

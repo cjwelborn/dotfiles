@@ -166,6 +166,7 @@ function fzf_setup {
 
     export FZF_CTRL_T_OPTS="--preview \"${highlightcmd[*]}\""
     bashextraslog "Loading fzf keybindings from: $fzf_source"
+    # shellcheck source=/home/cj/.fzf.bash
     source "$fzf_source"
     bashextrasecho "Fzf fuzzy finder available: Ctrl + T"
     return 0
@@ -354,9 +355,11 @@ function favor_fortune {
 aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
 if [[ -f "$aliasmgrfile" ]]; then
     echo ""
+    # shellcheck source=/usr/share/aliasmgr/aliasmgr_scripts.sh
     source "$aliasmgrfile"
     bashextraslog "Loaded aliasmgr scripts: $aliasmgrfile"
 elif [[ -f "$cjhome/bash.alias.sh" ]]; then
+    # shellcheck source=/home/cj/bash.alias.sh
     source "$cjhome/bash.alias.sh"
     bashextraslog "Loaded plain alias script: $cjhome/bash.alias.sh"
 fi
@@ -432,15 +435,15 @@ function goto_last_session_dir {
     local lastdir
     if ! lastdir="$(get_last_session_dir)"; then
         # No directory to go to.
-        cd
+        cd || return 1
         return 1
     fi
     if [[ -z "$lastdir" ]] || [[ ! -d "$lastdir" ]]; then
         # Empty lastdir.
-        cd
+        cd || return 1
         return 1
     fi
-    cd "$lastdir"
+    cd "$lastdir" || return 1
 }
 # Goto the last session's directory.
 goto_last_session_dir

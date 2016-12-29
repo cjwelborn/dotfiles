@@ -173,7 +173,7 @@ function cdgodir()
 	local godirname
 	godirname="$(godir "$1")"
 	if (( $? == 0 )); then
-		cd "$godirname"
+		cd "$godirname" || return 1
 		return 0
 	fi
 	return 1
@@ -183,7 +183,7 @@ function cdgodir()
 function cdsym()
 {
 	# Cd to actual target directory for symlink.
-	cd "$(pwd -P)"
+	cd "$(pwd -P)" || return 1
 	# This is only here for alias manager. :(
 	: :
 }
@@ -201,7 +201,7 @@ function exal()
 	# Use `exa` to list files in the directory. Use -T for tree view.
 
 	# Make sure exa is available, otherwise print some helpful info.
-	hash exa || {
+	hash exa 2>/dev/null || {
 		printf "
 \`exa\` is not installed.
 You can get it at: https://github.com/ogham/exa
@@ -221,7 +221,7 @@ Or run: \`cargo install --git https://github.com/ogham/exa\`
 		if [[ "$arg" == "+a" ]] || [[ "$arg" == "--nohidden" ]]; then
 			do_all=0
 		else
-			if [[ "$arg" == "-h" ]] || [[ "$arg" == "--help" ]]; then
+			if [[ "$arg" == "--help" ]]; then
 				do_help=1
 			fi
 			user_args+=("$arg")
@@ -248,7 +248,19 @@ Or run: \`cargo install --git https://github.com/ogham/exa\`
 	local long_conflict_pat='(-1)|(--oneline)|(-x)|(--across)'
 	[[ ! "$*" =~ $long_conflict_pat ]] && exa_args+=("${long_opts[@]}")
 
-	exa "${exa_args[@]}" "${user_args[@]}"
+	if ! exa "${exa_args[@]}" "${user_args[@]}"; then
+		# exa failed, add some better help messages for "extra options" errors.
+		local exitcode=$?
+		local erroutput
+		erroutput="$(exa "${exa_args[@]}" "${user_args[@]}" 2>&1)"
+		if [[ "$erroutput" == Option* ]]; then
+			printf "\nThe \`exal\` function already adds some options to \`exa\`.\n" 1>&2
+			if [[ "$erroutput" == *'header'* ]]; then
+				printf "If you are looking for help, use --help instead of -h.\n" 1>&2
+			fi
+		fi
+		return $exitcode
+	fi
 	((do_help)) && printf "
 Extra arguments provided by the \`exal\` function:
   +a, --nohidden     don't use --all, or don't show hidden files.
@@ -364,7 +376,7 @@ function kd()
 	if [[ -z "$1" ]] ; then
 		echo "Usage: kd directory_name"
 	else
-		cd "$1"
+		cd "$1" || return 1
 		pwd -P
 		ls -a --group-directories-first --color=always
 	fi
@@ -726,11 +738,11 @@ function wmswitch()
 
 function wpcd()
 {
+	# cd to wp development dir if not already there.
 	# shellcheck disable=SC2154
-	# cd to wp development dir if needed.
 	if [[ "$PWD" != "$Wp" ]]; then
 	    echo "Moving to wp development dir: $Wp"
-	    cd "$Wp"
+	    cd "$Wp" || return 1
 	fi
 }
 

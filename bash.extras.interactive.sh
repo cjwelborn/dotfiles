@@ -30,7 +30,7 @@ function bashextraslog {
 }
 echo "Loading bash.extras.interactive.sh, cjhome=$cjhome" > "$bashextraslogfile"
 defined_colr=0
-if ! hash colr; then
+if ! hash colr &>/dev/null; then
     defined_colr=1
     function colr {
         echo -e "$1"
@@ -136,7 +136,7 @@ unset -f set_less_colors
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
 function fzf_setup {
     local fzf_source="$cjhome/.fzf.bash"
-    if [[ ! -f "$fzf_source" ]] || ! hash "$cjhome/clones/fzf/bin/fzf" 2>/dev/null; then
+    if [[ ! -f "$fzf_source" ]] || ! hash "$cjhome/clones/fzf/bin/fzf" &>/dev/null; then
         # Missing fzf executable or bash file.
         return 1
     fi
@@ -144,10 +144,10 @@ function fzf_setup {
     local fzfpreviewlinecnt=$((${LINES:-$(tput lines)} - 2))
     # If no other highlighter is found, just use cat.
     highlighter="cat"
-    if hash highlight; then
+    if hash highlight &>/dev/null; then
         # Use the 'highlight' command from apt packages.
         highlighter="highlight -O ansi"
-    elif hash ccat; then
+    elif hash ccat &>/dev/null; then
         # Use ccat from https://github.com/welbornprod/ccat
         highlighter="ccat --colors --format terminal"
     fi

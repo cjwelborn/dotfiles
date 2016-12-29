@@ -25,6 +25,8 @@ export HISTCONTROL=ignoreboth:erasedups
 # Use english UTF8 everywhere.
 export LC_ALL=en_US.UTF-8
 
+hash ksshaskpass &>/dev/null && export SSH_ASKPASS="/usr/bin/ksshaskpass"
+
 function _echo {
     # Echo only in interactive mode.
     if [[ -n "$PS1" ]]; then
@@ -53,6 +55,7 @@ fi
 # Get Cj's Variables first, so they are available in other scripts.
 variablefile="$cjhome/bash.variables.sh"
 if [[ -f "$variablefile" ]]; then
+    # shellcheck source=/home/cj/bash.variables.sh
     source "$variablefile"
 else
     _echo "Variables file not found: $variablefile"
@@ -98,7 +101,8 @@ unset cargo_bin_dir
 # Node version manager.
 if [[ -d "$cjhome/.nvm" ]] && [[ -x "$cjhome/.nvm" ]]; then
     export NVM_DIR="$cjhome/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+    # shellcheck source=/home/cj/.nvm/nvm.sh
+    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"  # This loads nvm
     # Add all node version's bin directories to path.
     shopt -s nullglob
     nvmversions=("$cjhome"/.nvm/versions/*/*)

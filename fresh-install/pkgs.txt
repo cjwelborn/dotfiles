@@ -221,7 +221,6 @@ minetest-mod-worldedit
 mirage
 mumble
 muon
-mysql-server
 nasm
 ndiff
 neverputt

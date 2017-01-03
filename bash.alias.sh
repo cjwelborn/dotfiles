@@ -610,6 +610,13 @@ function pylitepng()
 	pygmentize -l python -f png -P style=borland -O full -o "$2" "$1"
 }
 
+function shead()
+{
+	# 'Smart' head, or 'screen' head. uses screen height for -n.
+	head -n "$(($(tput lines) - 1))" "$@"
+	:
+}
+
 function showmyip()
 {
 	# shows current IP address
@@ -626,6 +633,13 @@ function sshver()
 	telnet "$1" 22 | grep "SSH"
 	# Force alias manager to make this a function :(
 	: :
+}
+
+function stail()
+{
+	# 'Smart' tail, or 'screen' tail. uses screen height for -n.
+	tail -n "$(($(tput lines) - 1))" "$@"
+	:
 }
 
 function switchroot()
@@ -877,8 +891,10 @@ export pscores
 export pylite
 export pylitegif
 export pylitepng
+export shead
 export showmyip
 export sshver
+export stail
 export switchroot
 export symlink
 export tarlist

@@ -314,6 +314,8 @@ function favor_fortune {
         if hash lolcat &>/dev/null; then
             # Filter the fortunes through lolcat.
             filtercmd='lolcat'
+        elif hash ccat &>/dev/null; then
+            filtercmd='ccat --rainbow'
         else
             # Plain output (using cat).
             filtercmd='cat'
@@ -327,7 +329,7 @@ function favor_fortune {
         for filepath in "${fortunefiles[@]}"; do
             dbname="${filepath##*/}"
             [[ -z "$dbname" ]] && continue
-            fortunedbs=("${fortunedbs[@]}" "$dbname")
+            fortunedbs+=("$dbname")
         done
 
         # Favorite fortune dbs, with a percentage showing their chance at display.
@@ -344,7 +346,8 @@ function favor_fortune {
         for favorchance in "${!fortunefavs[@]}"; do
             favordb="${fortunefavs[$favorchance]}"
             if [[ -e "/usr/share/games/fortunes/$favordb" ]]; then
-                fortuneargs=("${fortuneargs[@]}" "$favorchance" "$favordb")
+                fortuneargs+=("$favorchance" "$favordb")
+                bashextraslog "Found fortune file: $favordb, set to: $favorchance"
             fi
         done
         fortune "${fortuneargs[@]}" "${fortunedbs[@]}" | "$filtercmd"

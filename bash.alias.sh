@@ -352,7 +352,7 @@ function fzfcmddir {
 }
 
 # shellcheck disable=SC2120
-function fzfp() {
+function fzfp {
 	# Use fzf to select a file, with preview.
 	# Number of lines to show in the preview.
 	local linecnt=$((${LINES:-$(tput lines)} - 2))
@@ -426,19 +426,27 @@ function kd {
 }
 
 function mkdircd {
-	# make dir and cd to it
+	# Make dir and cd to it
 	# mkdir -p "$@" && eval cd "\"\$$#\""
 	if [[ -z "$1" ]] ; then
-		echo "Usage: mkdircd DIR"
+		printf "
+	Usage: mkdircd [ARGS...] DIR
+	Options:
+		ARGS  : Arguments for \`mkdir\`. '-p' is already used.
+		DIR   : Directory to create and \`cd\` to.
+	"
 		return 1
 	fi
-	if ! mkdir -p "$1"; then
-		echo "Failed to make dir: $1" 1>&2
+	declare -a args=("$@")
+	local lastargi=$((${#args[@]} - 1))
+	local dir="${args[$lastargi]}"
+	if ! mkdir -p "${args[@]}"; then
+		echo_err "Failed to make dir with: ${args[*]}"
 		return 1
 	fi
-	echo "Created $1"
-	if ! cd "$1"; then
-		echo "Failed to cd to dir: $1" 1>&2
+	echo "Created $dir"
+	if ! cd "$dir"; then
+		echo_err "Failed to cd to dir: $dir"
 		return 1
 	fi
 	echo "Moved to $PWD"

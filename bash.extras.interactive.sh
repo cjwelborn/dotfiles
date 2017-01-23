@@ -384,7 +384,7 @@ fi
 # Another option is to use '$(lessfile)', which processes the entire file
 # before displaying it. `lesspipe` views the file DURING processing, using
 # pipes. -Cj
-eval "$(lesspipe)"
+hash lesspipe &>/dev/null && eval "$(lesspipe)"
 
 # Welcome message.
 welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"

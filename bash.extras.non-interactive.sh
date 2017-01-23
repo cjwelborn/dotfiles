@@ -171,4 +171,7 @@ setxkbmap -option "grp:switch,grp:alt_shift_toggle,grp_led:scroll" -layout "us,g
 # This is a 'soft' limit (-S), which can be increased by a non-root user.
 #         Default setting: 62312
 # Usual running processes: 252
-ulimit -S -u 5000
+ulimit_proc_max=5000
+ulimit -S -u "$ulimit_proc_max" 2>/dev/null && printf "Set process limit: %s\n" "$ulimit_proc_max"
+unset -v ulimit_proc_max
+

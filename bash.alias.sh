@@ -31,6 +31,8 @@ alias dirs="dirs -v"
 alias distupgrade="sudo apt-get update && sudo apt-get dist-upgrade"
 # Echo $PATH, with newlines.
 alias echo_path="echo \$PATH | tr ':' '\n'"
+# Tell exa to always group directories first.
+alias exa="exa --group-directories-first"
 # Run green with -vv for more verbosity.
 alias greenv="green -vv"
 # use colors and regex for grep always
@@ -242,7 +244,8 @@ function echo_err {
 
 function exal {
 	# Use `exa` to list files in the directory. Use -T for tree view.
-
+	local exal_name="${FUNCNAME[0]}"
+	local exal_file="${BASH_SOURCE[0]}"
 	# Make sure exa is available, otherwise print some helpful info.
 	hash exa 2>/dev/null || {
 		printf "
@@ -253,27 +256,55 @@ Or run: \`cargo install --git https://github.com/ogham/exa\`
 		return 1
 	}
 	declare -a user_args
-	# Options for all views.
-	declare -a default_opts=(
-		"--sort" "name"
-	 	"--group-directories-first"
+	# Options for all views, created from try_opts if an alias has not set them.
+	declare -a default_opts
+	# These options can only be used once,
+	# and may already be added to some `exa` alias.
+	declare -A try_opts=(
+		["--sort"]="name"
+		["--group-directories-first"]=""
 	)
+	local optflag optval
+	for optflag in "${!try_opts[@]}"; do
+		# If this option is not found in some `exa` alias, add it.
+		if [[ ! "$(type exa 2>/dev/null)" =~ $optflag ]]; then
+			default_opts+=("$optflag")
+			optval="${try_opts[$optflag]}"
+			# If this option has a value, add it too.
+			[[ -n "$optval" ]] && default_opts+=("$optval")
+		fi
+	done
+
 	# Extra +a,--nohidden option for disabling --all.
-	local arg do_all=1 do_help=0
+	# Also, debug mode flag for `exal`.
+	local arg do_all=1 debug_mode=0
 	for arg in "$@"; do
 		if [[ "$arg" == "+a" ]] || [[ "$arg" == "--nohidden" ]]; then
 			do_all=0
 		else
 			if [[ "$arg" == "--help" ]]; then
-				do_help=1
+				((debug_mode)) && printf "Running exa --help\n" 1>&2
+				printf "Help for \`exa\` via the \`%s\` function in %s\n" "$exal_name" "$exal_file"
+				exa --help
+				printf "
+Extra arguments provided by the \`exal\` function:
+  +a, --nohidden     don't use --all, or don't show hidden files.
+  -D,--debug         show the command that \`exal\` is running.
+"
+				return
+			elif [[ "$arg" =~ ^(-D)|(--debug)$ ]]; then
+				# Don't add this to the exa args, this is for exal only.
+				debug_mode=1
+			else
+				user_args+=("$arg")
 			fi
-			user_args+=("$arg")
 		fi
 	done
-	((do_all)) && default_opts+=("--all")
-
+	if ((do_all)) && [[ ! "${user_args[*]}" =~ --all ]]; then
+		default_opts+=("--all")
+	fi
 	# Columns to show for long-views.
-	declare -a long_opts=(
+	declare -a try_long_opts=(
 		"--long"
 		"--binary"
 		"--blocks"
@@ -289,8 +320,20 @@ Or run: \`cargo install --git https://github.com/ogham/exa\`
 	# 	-1, --oneline      display one entry per line
 	# 	-x, --across       sort multi-column view entries across
 	local long_conflict_pat='(-1)|(--oneline)|(-x)|(--across)'
-	[[ ! "$*" =~ $long_conflict_pat ]] && exa_args+=("${long_opts[@]}")
+	if [[ ! "$*" =~ $long_conflict_pat ]]; then
+		# User is not passing any conflicting --long args,
+		# try some default --long options.
+		for optflag in "${try_long_opts[@]}"; do
+			# If this option is not found in some `exa` alias, and it's
+			# not in the user_args, add it.
+			if [[ ! "$(type exa 2>/dev/null)" =~ $optflag ]] && [[ ! "${user_args[*]}" =~ $optflag ]]; then
+				exa_args+=("$optflag")
+			fi
+		done
 
+	fi
+
+	((debug_mode)) && printf "Running: exa %s %s\n" "${exa_args[*]}" "${user_args[*]}" 1>&2
 	if ! exa "${exa_args[@]}" "${user_args[@]}"; then
 		# exa failed, add some better help messages for "extra options" errors.
 		local exitcode=$?
@@ -304,10 +347,6 @@ Or run: \`cargo install --git https://github.com/ogham/exa\`
 		fi
 		return $exitcode
 	fi
-	((do_help)) && printf "
-Extra arguments provided by the \`exal\` function:
-  +a, --nohidden     don't use --all, or don't show hidden files.
-"
 }
 
 

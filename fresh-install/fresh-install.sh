@@ -6,8 +6,8 @@
 #   remote apt package files, using wget and dpkg (from a list.txt).
 #   python 2 packages, using pip2 (from a list.txt) (uses sudo for sys pkgs)
 #   python 3 packages, using pip3 (from a list.txt) (uses sudo for sys pkgs)
-#   app config files (from github.com/cjwelborn/cj-config)
-#   bash config files (from github.com/cjwelborn/cj-dotfiles)
+#   app config files (from github.com/cjwelborn/config)
+#   bash config files (from github.com/cjwelborn/dotfiles)
 #   ruby gems (from a list.txt)
 #   atom packages (from a list.txt)
 #   git clones (from a list.txt)
@@ -21,7 +21,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.3.1"
+appversion="0.3.2"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -466,15 +466,15 @@ function install_apt_packages {
 }
 
 function install_config {
-    # Install config files from github.com/cjwelborn/cj-config.git
-    local repodir=~/clones/cj-config
+    # Install config files from github.com/cjwelborn/config.git
+    local repodir=~/clones/config
     if ((dry_run)); then
         echo "Creating real directory for dry run."
         mkdir -p "$repodir" || return 1
     else
         make_dir "$repodir" || return 1
     fi
-    if ! repodir="$(clone_repo "https://github.com/cjwelborn/cj-config.git" "$repodir")"; then
+    if ! repodir="$(clone_repo "https://github.com/cjwelborn/config.git" "$repodir")"; then
         echo_err "Repo clone failed, cannot install config."
         [[ -n "$repodir" && -e "$repodir" ]] && rm -r "$repodir"
         return 1
@@ -949,14 +949,14 @@ function print_usage {
         -a,--apt            : Install apt packages.
         -ap,--apm           : Install apm packages.
         -C,--checkfiles     : Just check for required list files.
-        -c,--config         : Install config from cj-config repo.
+        -c,--config         : Install config from cjwelborn/config repo.
         -D,--debug          : Print some debug info while running.
         -d,--dryrun         : Don't do anything, just print the commands.
                               Files will be downloaded to a temporary
                               directory, but deleted soon after (or at least
                               on reboot).
                               Nothing will be installed to the system.
-        -f,--dotfiles       : Install dot files from cj-dotfiles repo.
+        -f,--dotfiles       : Install dot files from cjwelborn/dotfiles repo.
         -f2,--findpip2      : List installed pip 2.7 packages on this machine.
                               Used to build ${filename_pip2_pkgs##*/}.
         -f3,--findpip3      : List installed pip 3 packages on this machine.

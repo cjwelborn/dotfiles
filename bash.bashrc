@@ -93,5 +93,5 @@ active_extras_path="$cjhome/$active_extras_name"
 if [[ -f "$active_extras_path" ]]; then
     source "$active_extras_path"
 elif [[ -f "$HOME/$active_extras_name" ]]; then
-	source "$HOME/$active_extras_name"
+    source "$HOME/$active_extras_name"
 fi

@@ -15,6 +15,8 @@ alias aptfix="sudo apt-get install -f"
 alias aptinstall="sudo apt-get install"
 # Use --force-overwrite with any apt-get command.
 alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrite'"
+# Use .agignore file always, if it exists.
+[[ -e ~/.agignore ]] && alias ag="ag --path-to-agignore ~/.agignore"
 # http://overthewire.org/wargames/bandit
 alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org"
 # BFG Repo-Cleaner for git.

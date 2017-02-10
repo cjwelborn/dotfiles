@@ -231,6 +231,10 @@ function cj_aliases {
 	# Print current aliases.
 	local filename=~/bash.alias.sh
 	local userpat="${1:-.+}"
+	[[ "$userpat" =~ ^(-h)|(--help)$ ]] && {
+		printf "Usage: cj_aliases [PATTERN]\n"
+		return 0
+	}
 	local blue="${blue:-$'\e[0;34m'}"
 	local cyan="${cyan:-$'\e[0;36m'}"
 	local green="${green:-$'\e[0;32m'}"
@@ -280,6 +284,10 @@ function cj_functions {
 	# Print current functions.
 	local filename=~/bash.alias.sh
 	local userpat="${1:-.+}"
+	[[ "$userpat" =~ ^(-h)|(--help)$ ]] && {
+		printf "Usage: cj_functions [PATTERN]\n"
+		return 0
+	}
 	local blue="${blue:-$'\e[0;34m'}"
 	local cyan="${cyan:-$'\e[0;36m'}"
 	local green="${green:-$'\e[0;32m'}"

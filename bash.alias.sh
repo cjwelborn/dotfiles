@@ -21,10 +21,10 @@ alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrit
 alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org"
 # BFG Repo-Cleaner for git.
 alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar"
-# Print cjs aliases using aliasmgr if available, otherwise use the cj_aliases function.
-alias cjaliases="{ hash aliasmgr &>/dev/null && aliasmgr -pca; } || cj_aliases"
-# Print cjs functions using aliasmgr if available, otherwise use the cj_functions function.
-alias cjfunctions="{ hash aliasmgr &>/dev/null && aliasmgr -pcf; } || cj_functions"
+# Print cjs aliases.
+alias cjaliases="cj_aliases"
+# Print cjs functions.
+alias cjfunctions="cj_functions"
 # Clears the BASH screen by trickery.
 alias clearscreen='echo -e "\033[2J\033[?25l"'
 # Vertical directory listing for 'dirs', with indexes.

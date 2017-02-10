@@ -21,10 +21,10 @@ alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrit
 alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org"
 # BFG Repo-Cleaner for git.
 alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar"
-# print cjs aliases
-alias cjaliases="aliasmgr -pca"
-# print cjs functions
-alias cjfunctions="aliasmgr -pcf"
+# Print cjs aliases using aliasmgr if available, otherwise use the cj_aliases function.
+alias cjaliases="{ hash aliasmgr &>/dev/null && aliasmgr -pca; } || cj_aliases"
+# Print cjs functions using aliasmgr if available, otherwise use the cj_functions function.
+alias cjfunctions="{ hash aliasmgr &>/dev/null && aliasmgr -pcf; } || cj_functions"
 # Clears the BASH screen by trickery.
 alias clearscreen='echo -e "\033[2J\033[?25l"'
 # Vertical directory listing for 'dirs', with indexes.
@@ -225,6 +225,81 @@ function cdsym {
 	cd "$(pwd -P)" || return 1
 	# This is only here for alias manager. :(
 	: :
+}
+
+function cj_aliases {
+	# Print current aliases.
+	local filename=~/bash.alias.sh
+	local userpat="${1:-.+}"
+	local blue="${blue:-$'\e[0;34m'}"
+	local cyan="${cyan:-$'\e[0;36m'}"
+	local green="${green:-$'\e[0;32m'}"
+	local NC="${NC:-$'\e[0m'}"
+	local line name cmd cmdfmt cmdname cmdargs
+	local prepend="" tryprepend quotepat='^"'
+	declare -a prepends=("{" "(")
+	while read -r line; do
+		cmd="${line#*=}"
+		name="${line%%=*}"
+		[[ "$name" =~ $userpat ]] || continue
+		# Strip quotes from command.
+		if [[ "$cmd" =~ $quotepat ]]; then
+			cmdfmt="${cmd#\"}"
+			cmdfmt="${cmdfmt%\"}"
+		else
+			# Single quotes.
+			cmdfmt="${cmd#\'}"
+			cmdfmt="${cmdfmt%\'}"
+		fi
+
+		cmdname="${cmdfmt%% *}"
+		cmdargs="${cmdfmt#* }"
+		prepend=""
+		for tryprepend in "${prepends[@]}"; do
+			if [[ "$cmdname" == "$tryprepend" ]]; then
+				# Special case a couple aliases with brackets.
+				cmdname="${cmdargs%% *}"
+				cmdargs="${cmdargs#* }"
+				prepend="$tryprepend"
+			fi
+		done
+		[[ -n "$prepend" ]] && cmdargs="$prepend $cmdargs"
+
+		printf "%s%24s%s: " "$blue" "$name" "$NC"
+		if hash highlight &>/dev/null; then
+			printf "%s\n" \
+				"$(highlight --style=solarized-dark --syntax=bash --out-format=xterm256  <<<"$cmdname $cmdargs")"
+		else
+			printf "%s%s%s " "$green" "$cmdname" "$NC"
+			printf "%s%s%s\n" "$cyan" "$cmdargs" "$NC"
+		fi
+	done < <(egrep '^alias' "$filename" | cut -d ' ' -f2-)
+}
+
+function cj_functions {
+	# Print current functions.
+	local filename=~/bash.alias.sh
+	local userpat="${1:-.+}"
+	local blue="${blue:-$'\e[0;34m'}"
+	local cyan="${cyan:-$'\e[0;36m'}"
+	local green="${green:-$'\e[0;32m'}"
+	local NC="${NC:-$'\e[0m'}"
+	local name body
+	while read -r name; do
+		# Get the function body from `type`, and indent it.
+		[[ "$name" =~ $userpat ]] || continue
+		if ! body="$(type "$name" | tail -n +3 | awk '{ print "    "$0 }')"; then
+			echo_err "Can't get function body for: $name"
+			continue
+		fi
+		printf "\n%s%s%s:\n" "$blue" "$name" "$NC"
+		if hash highlight &>/dev/null; then
+			# The molokai (not monokai) style is nice too.
+			highlight --style=solarized-dark --syntax=bash --out-format=xterm256  <<<"$body"
+		else
+			printf "%s%s%s\n" "$cyan" "$body" "$NC"
+		fi
+	done < <(egrep '^function' "$filename" | cut -d ' ' -f2)
 }
 
 function diff {
@@ -922,6 +997,8 @@ export camrecord
 export ccatp
 export cdgodir
 export cdsym
+export cj_aliases
+export cj_functions
 export diff
 export echo_err
 export exal

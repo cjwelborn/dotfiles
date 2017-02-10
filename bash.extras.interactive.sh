@@ -339,7 +339,8 @@ function favor_fortune {
         fortunefavs=(
             ["50%"]="irc_debian_hackers"
             ["25%"]="ascii-art"
-            ["15%"]="computers")
+            ["15%"]="computers"
+        )
         declare -a fortuneargs
         local favorchance
         local favordb
@@ -451,9 +452,8 @@ function goto_last_session_dir {
 # Goto the last session's directory.
 goto_last_session_dir
 
-# Remove logging vars/funcs.
-unset -v bashextraslogfile
-unset -f bashextraslog
+# Remove extra funcs/vars.
+# bashextraslog needs to hang around for favor_fortune.
 unset -f bashextrasecho
 ((defined_colr)) && unset -f colr
 unset defined_colr

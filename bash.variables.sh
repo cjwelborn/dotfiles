@@ -23,7 +23,12 @@ function bashvarsecho {
 }
 
 # Root for frequently used dirs.
-export Home='/home/cj'
+if [[ -d "/home/cj" ]]; then
+    export Home='/home/cj'
+elif [[ -d "/home/cjwelborn" ]]; then
+    # Remote/welbornprod server.
+    export Home="/home/cjwelborn"
+fi
 
 # Frequently used dirs/files
 export Aliases="/etc/bash.alias.sh"
@@ -50,7 +55,12 @@ export Clones="$Home/clones"
 export Cram="$Work/cram/cram_site"
 export Menuprops="$Work/eclipse/menuprops"
 export Pyval="$Work/pyval"
-export Wp="$Work/welbornprod/wp_site"
+if [[ -d "$Work/welbornprod/wp_site" ]]; then
+    export Wp="$Work/welbornprod/wp_site"
+elif [[ -d "$Home/webapps/wp_site/wp_site" ]]; then
+    export Wp="$Home/webapps/wp_site/wp_site"
+fi
+[[ -d "$Home/webapps/wp_test/wp_site" ]] && export Wp_test="$Home/webapps/wp_test/wp_site"
 export Unimenu="$Work/eclipse/unimenu"
 export Easysettings="$Work/eclipse/EasySettings"
 export Webgui="$Work/webgui"

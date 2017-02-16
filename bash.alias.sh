@@ -57,6 +57,8 @@ alias ll="ls -alh --group-directories-first --color=always"
 alias loadps3="sudo xboxdrv --detach-kernel-driver --silent"
 # List dir
 alias ls="ls -a --color=always --group-directories-first"
+# Just lsof -i
+alias lsofnet="lsof -i"
 # List dir using tree
 alias lt="tree -a -C --dirsfirst | more -s"
 # List directories only, using tree (same as `treed`).
@@ -69,9 +71,15 @@ alias mkdir="mkdir -p"
 alias mostcpu="ps aux | head -n1 && ps aux | sort -k 3"
 # Sorts 'ps' list of processes by memory consumption.
 alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4"
+# Use mypy, but auto ignore missing type imports (imports with no type info).
+alias mypyi="mypy --ignore-missing-imports"
 # shellcheck disable=SC2142
 # Use netstat to count socket types that are currently open.
 alias netstatcount="netstat -n | awk '{print \$1}' | egrep -v 'Proto|Active' | sort | uniq -c"
+# Use netstat to show open net sockets.
+alias netstatopen="netstat -n | egrep -v '^unix|Proto|Active' | sort -k 4,4"
+# Use nmap to show open ports on this machine.
+alias nmapopen="sudo nmap -sT -O localhost | grep 'open'"
 # Use npm install with a prefix set to $HOME
 alias npminstall="npm install --prefix=\$HOME"
 # List all installed perl modules (shortcode for cpan -l)

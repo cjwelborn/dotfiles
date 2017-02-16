@@ -143,7 +143,7 @@ function fzf_setup {
     # Use terminal height - 2, to allow for the box border.
     local fzfpreviewlinecnt=$((${LINES:-$(tput lines)} - 2))
     # If no other highlighter is found, just use cat.
-    highlighter="cat"
+    local highlighter="cat"
     if hash highlight &>/dev/null; then
         # Use the 'highlight' command from apt packages.
         highlighter="highlight -O ansi"
@@ -159,7 +159,7 @@ function fzf_setup {
         "if [[ \\\$(file {}) =~ text ]]; then"
         "    cat {};"
         "else"
-        "    echo 'Binary file, no preview available.';"
+        "    echo 'No preview available for {}.';"
         "fi"
         ") 2>/dev/null | head -n${fzfpreviewlinecnt}"
     )

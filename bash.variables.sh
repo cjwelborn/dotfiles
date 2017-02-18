@@ -36,6 +36,8 @@ export Apps="$Home/apps"
 export Dump="$Home/dump"
 export Variables="$Home/bash.variables.sh"
 
+# Remote-only dirs.
+[[ -d "$Home/logs/user" ]] && export Logs="$Home/logs/user"
 # Script dirs
 export Html="$Home/html"
 export Scripts="$Home/scripts"

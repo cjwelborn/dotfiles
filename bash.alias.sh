@@ -525,6 +525,14 @@ in ${aliasfilefmt}${RED}.${NC}"
 
 function fzfcoc {
     # Use fzf to checkout a specific commit.
+    local aliasfile
+    aliasfile="$(readlink -f "${BASH_SOURCE[0]}")"
+    local aliasfilefmt="${cyan}${aliasfile}${NC}"
+    if [[ "$*" =~ (-h)|(--help) ]]; then
+        echo "This is the \`${cyan}${FUNCNAME[0]}${NC}\` function from ${aliasfilefmt}.
+It runs ${blue}git checkout [selection]${NC} if you select a commit."
+        return 0
+    fi
     local commits commit
     # Using colr to strip codes from the branch names.
     hash colr &>/dev/null || {
@@ -646,6 +654,25 @@ function fzfkill {
     }
 }
 
+function fzfshow {
+    # Use fzf to browse git commits.
+    local aliasfile
+    aliasfile="$(readlink -f "${BASH_SOURCE[0]}")"
+    local aliasfilefmt="${cyan}${aliasfile}${NC}"
+    if [[ "$*" =~ (-h)|(--help) ]]; then
+        echo "This is the \`${cyan}${FUNCNAME[0]}${NC}\` function from ${aliasfilefmt}.
+It allows you to view commits by selecting them."
+        return 0
+    fi
+    git log --graph --color=always \
+        --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
+    fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
+        --bind "ctrl-m:execute:
+(grep -o '[a-f0-9]\{7\}' | head -1 |
+xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
+{}
+FZF-EOF"
+}
 
 function inetinfo {
     # show current internet information

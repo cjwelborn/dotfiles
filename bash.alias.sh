@@ -483,6 +483,39 @@ function fzfcmddir {
     ((${#filenames[@]})) && "$cmd" "${cmdargs[@]}" "${filenames[@]}"
 }
 
+function fzfco {
+    # use fzf to git checkout a branch. Arguments are passed to `git branch`.
+    local branches branch
+    # Using colr to strip codes from the branch names.
+    hash colr &>/dev/null || {
+        echo_err "This function requires \`colr\`. Install it with \`pip\`."
+        return 1
+    }
+    if [[ "$*" =~ (-h)|(--help) ]]; then
+        echo "This is the \`${cyan}fzfco${NC}\` function from ${cyan}${BASH_SOURCE[0]}${NC}.
+It runs ${blue}git checkout [selection]${NC} if you select a branch."
+        return 0
+    fi
+    branches=$(git branch "$@" | grep -v HEAD | colr -x) || {
+        echo_err "${RED}No branches found.${NC}"
+        return 1
+    }
+    branch=$(echo "$branches" | fzf-tmux -d $(( 2 + $(wc -l <<< "$branches") )) +m)
+    [[ -z "$branch" ]] && {
+        echo_err "${RED}No branch selected.${NC}"
+        return 1
+    }
+    # Remove leading spaces.
+    branch="$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##")"
+    [[ -z "$branch" ]] && {
+        echo_err "${RED}Something happened while trimming spaces from the
+branch name on line ${blue}$((LINENO - 3)){$RED}, function \`${cyan}fzfco${RED}\` \
+in ${cyan}${BASH_SOURCE[0]}${RED}.${NC}"
+        return 1
+    }
+    git checkout "$branch"
+}
+
 # shellcheck disable=SC2120
 function fzfp {
     # Use fzf to select a file, with preview.
@@ -563,7 +596,19 @@ function fzfkill {
     [[ -z "$pid" ]] && return 1
     local xargscmd='xargs'
     ((do_sudo)) && xargscmd="sudo $xargscmd"
-    echo "$pid" | $xargscmd kill "-${args[0]}"
+    echo "$pid" | $xargscmd kill "-${args[0]}" || {
+        local procname
+        procname=$(< "/proc/$pid/comm")
+        local procinfo
+        [[ -n "$procname" ]] && procinfo="$procname "
+        if [[ -n "$procinfo" ]]; then
+            procinfo="${procinfo} (${pid})"
+        else
+            procinfo=$pid
+        fi
+        echo_err "Unable to kill process: $procinfo"$'\n'"..maybe try --sudo?"
+        return 1
+    }
 }
 
 

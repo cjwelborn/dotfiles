@@ -509,7 +509,7 @@ It runs ${blue}git checkout [selection]${NC} if you select a branch."
         return 1
     }
     # Remove leading spaces.
-    branch="${branch##* }"
+    branch="${branch#*  }"
     # shellcheck disable=SC2001
     # ..No shellcheck, I can't use ${var//search/replace}.
     branch="$(echo "$branch" | sed "s#remotes/[^/]*/##")"
@@ -521,6 +521,34 @@ in ${aliasfilefmt}${RED}.${NC}"
     }
     echo "Checking out branch: ${blue}$branch${NC}"
     git checkout "$branch"
+}
+
+function fzfcoc {
+    # Use fzf to checkout a specific commit.
+    local commits commit
+    # Using colr to strip codes from the branch names.
+    hash colr &>/dev/null || {
+        echo_err "This function requires \`colr\`. Install it with \`pip\`."
+        return 1
+    }
+
+    commits=$(git log --pretty=oneline --abbrev-commit --reverse | colr -x) || {
+        echo_err "Unable to get commits."
+        return 1
+    }
+    commit=$(echo "$commits" | fzf --tac +s +m -e) || {
+        echo_err "No commit selected."
+        return 1
+    }
+    local commitdesc="${commit#* }"
+    # Just get the hash for the commit, remove all descriptions.
+    commit="${commit%% *}"
+    [[ -n "$commit" ]] || {
+        echo_err "Something happened while trimming whitespace from commit!"
+        return 1
+    }
+    echo "Checking out commit: ${blue}${commit}${NC}: ${cyan}${commitdesc}${NC}"
+    git checkout "$commit"
 }
 
 # shellcheck disable=SC2120
@@ -1097,65 +1125,3 @@ function ziplist {
 
     unzip -l "$@"
 }
-
-# Exports:
-export apache
-export apachelog
-export aptinstall
-export argclinic
-export asciimovie
-export ask
-export birthday
-export camrecord
-export ccatp
-export cdgodir
-export cdsym
-export cj_aliases
-export cj_functions
-export diff
-export echo_err
-export exal
-export fe
-export ff
-export fzfcmd
-export fzfcmddir
-export fzfdir
-export fzfp
-export fzfkill
-export inetinfo
-export kd
-export mkdircd
-export move_to_col
-export my_ip
-export pip3install
-export pipall
-export pipinstall
-export pipinstallall
-export portscan
-export print_failure
-export print_status
-export print_success
-export print_warning
-export pscores
-export pylite
-export pylitegif
-export pylitepng
-export shead
-export showmyip
-export sshver
-export stail
-export switchroot
-export symlink
-export tarlist
-export userslogin
-export weatherday
-export weatherweek
-export wmswitch
-export wpcd
-export wpfcgi
-export wpmemory
-export wpprofile
-export write_failure
-export write_success
-export write_warning
-export ziplist

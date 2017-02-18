@@ -491,8 +491,11 @@ function fzfco {
         echo_err "This function requires \`colr\`. Install it with \`pip\`."
         return 1
     }
+    local aliasfile
+    aliasfile="$(readlink -f "${BASH_SOURCE[0]}")"
+    local aliasfilefmt="${cyan}${aliasfile}${NC}"
     if [[ "$*" =~ (-h)|(--help) ]]; then
-        echo "This is the \`${cyan}fzfco${NC}\` function from ${cyan}${BASH_SOURCE[0]}${NC}.
+        echo "This is the \`${cyan}${FUNCNAME[0]}${NC}\` function from ${aliasfilefmt}.
 It runs ${blue}git checkout [selection]${NC} if you select a branch."
         return 0
     fi
@@ -506,13 +509,17 @@ It runs ${blue}git checkout [selection]${NC} if you select a branch."
         return 1
     }
     # Remove leading spaces.
-    branch="$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##")"
+    branch="${branch##* }"
+    # shellcheck disable=SC2001
+    # ..No shellcheck, I can't use ${var//search/replace}.
+    branch="$(echo "$branch" | sed "s#remotes/[^/]*/##")"
     [[ -z "$branch" ]] && {
         echo_err "${RED}Something happened while trimming spaces from the
-branch name on line ${blue}$((LINENO - 3)){$RED}, function \`${cyan}fzfco${RED}\` \
-in ${cyan}${BASH_SOURCE[0]}${RED}.${NC}"
+branch name on line ${blue}$((LINENO - 3)){$RED}, function \`${cyan}${FUNCNAME[0]}${RED}\` \
+in ${aliasfilefmt}${RED}.${NC}"
         return 1
     }
+    echo "Checking out branch: ${blue}$branch${NC}"
     git checkout "$branch"
 }
 

@@ -106,6 +106,12 @@ alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.ht
 alias servers="sudo netstat -ltupn"
 # Use 4 spaces always with shfmt.
 alias shfmt="shfmt -i 4"
+# Aliases to re-source dotfiles.
+alias source-bashrc="source_verbose /etc/bash.bashrc"
+alias source-alias="source_verbose ~/bash.alias.sh"
+alias source-vars="source_verbose ~/bash.variables.sh"
+alias source-active="source_verbose ~/bash.extras.interactive.sh"
+alias source-nonactive="source_verbose ~/bash.extras.non-interactive.sh"
 # SSH into koding.com vm (with XForwarding)
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io"
 # Show temperature for machines with 'sensors' installed.
@@ -943,6 +949,15 @@ function showmyip {
     MY_IP="$(/sbin/ifconfig w0 | awk '/inet/ { print $2 } ' | \
     sed -e s/addr://)"
     echo " ip: $MY_IP"
+}
+
+function source_verbose {
+    # Print a message before sourcing a file (for source-* aliases really).
+    [[ -n "$1" ]] || { echo_err "No file given to source!"; return 1; }
+    printf "\nSourcing: %s\n\n" "$1"
+    # shellcheck disable=SC1090
+    # ...shellcheck will never know the location for this source file.
+    source "$1"
 }
 
 function sshver {

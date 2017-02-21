@@ -360,6 +360,8 @@ aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
 if [[ -f "$aliasmgrfile" ]]; then
     echo ""
     # shellcheck source=/usr/share/aliasmgr/aliasmgr_scripts.sh
+    # shellcheck disable=SC1091
+    # ..This file doesn't always exist, shellcheck.
     source "$aliasmgrfile"
     bashextraslog "Loaded aliasmgr scripts: $aliasmgrfile"
 elif [[ -f "$cjhome/bash.alias.sh" ]]; then

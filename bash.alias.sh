@@ -35,6 +35,8 @@ alias distupgrade="sudo apt-get update && sudo apt-get dist-upgrade"
 alias echo_path="echo \$PATH | tr ':' '\n'"
 # Tell exa to always group directories first.
 alias exa="exa --group-directories-first"
+# When using the `expand` command, use 4 spaces for tab. (I never use expand.)
+alias expand="expand --tabs=4"
 # Run green with -vv for more verbosity.
 alias greenv="green -vv"
 # use colors and regex for grep always

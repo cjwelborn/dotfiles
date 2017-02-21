@@ -3,7 +3,6 @@
 # Packages marked with * are global packages, and require sudo to install.
 
 EasySettings
-OutputCatcher
 bat-country
 colorama
 curly

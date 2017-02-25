@@ -19,16 +19,21 @@ fi
 
 # Log some debug info while loading this script.
 if [[ -w "$cjhome" ]]; then
-  bashextraslogfile="$cjhome/bash.extras.interactive.log"
+  bashextraslogfile="$cjhome/extras.interactive.log"
 else
-  _echo &>/dev/null && _echo "No log file to write to."
+  echo_safe "No log file to write to."
 fi
 
 function bashextraslog {
     # Write to the bash.extras.interactive.log
-    echo -e "$@" >> "$bashextraslogfile"
+    if [[ -n "$2" ]]; then
+        # label/value pair.
+        printf "%-40s: %s\n" "$1" "$2" >> "$bashextraslogfile"
+    else
+        echo -e "$@" >> "$bashextraslogfile"
+    fi
 }
-echo "Loading bash.extras.interactive.sh, cjhome=$cjhome" > "$bashextraslogfile"
+echo "Loading ${BASH_SOURCE[0]}, cjhome=$cjhome" > "$bashextraslogfile"
 
 # Set font if using a tty (1-6).
 if [[ "$TERM" == "linux" ]]; then
@@ -38,23 +43,27 @@ if [[ "$TERM" == "linux" ]]; then
     # This is the font that I want to use.
     termfontfile="/usr/share/consolefonts/Uni3-Terminus16.psf.gz"
     if [[ -e "$termfontfile" ]]; then
-        bashextraslog "Setting font to $termfontfile ..."
+        bashextraslog "Setting font to" "$termfontfile"
         setfont "$termfontfile"
     elif [[ -e "$termfontfile_default" ]]; then
-        bashextraslog "Setting font to $termfontfile_default ..."
+        bashextraslog "Setting font to" "$termfontfile_default"
         setfont "$termfontfile_default"
     else
         bashextraslog "No terminal font files found, tried:"
         bashextraslog "    $termfontfile"
         bashextraslog "    $termfontfile_default"
     fi
+else
+    bashextraslog "Not a 'linux' terminal, no font set."
 fi
 
 # Set dir_colors if it exists.
 dircolorsfile="$cjhome/.dir_colors"
 if [[ -e "$dircolorsfile" ]]; then
     eval "$(dircolors "$dircolorsfile")"
-    bashextraslog "dir_colors set from: $dircolorsfile"
+    bashextraslog "dir_colors set from" "$dircolorsfile"
+else
+    bashextraslog "No .dir_colors found."
 fi
 unset -v dircolorsfile
 
@@ -88,7 +97,7 @@ export bg_magenta=$'\e[45m'
 export bg_cyan=$'\e[46m'
 export bg_white=$'\e[47m'
 export underlined=$'\e[4m'
-
+bashextraslog "Defined some global colors."
 # ------------------------------- LESS COLORS --------------------------------
 # Capabilities:
 # ks - make the keypad send commands
@@ -121,7 +130,7 @@ function set_less_colors() {
 }
 set_less_colors
 unset -f set_less_colors
-
+bashextraslog "Set \`less\` colors."
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
 function fzf_setup {
     local fzf_source="$cjhome/.fzf.bash"
@@ -154,7 +163,7 @@ function fzf_setup {
     )
 
     export FZF_CTRL_T_OPTS="--preview \"${highlightcmd[*]}\""
-    bashextraslog "Loading fzf keybindings from: $fzf_source"
+    bashextraslog "Loading fzf keybindings from" "$fzf_source"
     # shellcheck source=/home/cj/.fzf.bash
     source "$fzf_source"
     echo_safe "Fzf fuzzy finder available" "Ctrl + T"
@@ -277,12 +286,13 @@ function listprompts()
 # Use powerline shell prompt if available -------------------------------------
 if [[ -x "$powerline_file" ]]; then
     powerlineprompt
+    bashextraslog "Using powerline prompt from" "$powerline_file"
 else
     # Fall back to cj's prompt where powerline-shell is not available.
     if [[ -e "$powerline_file" ]]; then
-        bashextraslog "Falling back to cjprompt, not executable: $powerline_file"
+        bashextraslog "Fallback to cjprompt, not executable: $powerline_file"
     else
-        bashextraslog "Falling back to cjprompt, missing: $powerline_file"
+        bashextraslog "Fallback to cjprompt, missing: $powerline_file"
     fi
     cjprompt || {
         simpleprompt
@@ -339,7 +349,7 @@ function favor_fortune {
         favordb="${fortunefavs[$favorchance]}"
         if [[ -e "/usr/share/games/fortunes/$favordb" ]]; then
             fortuneargs+=("$favorchance" "$favordb")
-            bashextraslog "Found fortune file: $favordb, set to: $favorchance"
+            bashextraslog "Found fortune file" "$favordb, set to: $favorchance"
         fi
     done
     fortune "${fortuneargs[@]}" "${fortunedbs[@]}" | "${filtercmd[@]}"
@@ -348,6 +358,7 @@ function favor_fortune {
 
 # Alias Manager scripts.
 aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
+plainaliasfile="$cjhome/bash.alias.sh"
 if [[ -f "$aliasmgrfile" ]]; then
     echo ""
     # shellcheck source=/usr/share/aliasmgr/aliasmgr_scripts.sh
@@ -355,13 +366,15 @@ if [[ -f "$aliasmgrfile" ]]; then
     # ..This file doesn't always exist, shellcheck.
     source "$aliasmgrfile"
     echo_safe "Loaded aliasmgr scripts" "$aliasmgrfile"
-elif [[ -f "$cjhome/bash.alias.sh" ]]; then
+    bashextraslog "Using aliasmgr scripts" "$aliasmgrfile"
+elif [[ -f "$plainaliasfile" ]]; then
     # shellcheck source=/home/cj/bash.alias.sh
-    source "$cjhome/bash.alias.sh"
-    echo_safe "Loaded plain alias script" "$cjhome/bash.alias.sh"
+    source "$plainaliasfile"
+    echo_safe "Loaded plain alias script" "$plainaliasfile"
+    bashextraslog "Using plain alias script" "$plainaliasfile"
 fi
-unset -v aliasmgrfile
-
+unset aliasmgrfile
+unset plainaliasfile
 # Show fortune, 'favor_fortune' will be available globally.
 # shellcheck disable=SC2034
 while read -r char; do
@@ -374,18 +387,24 @@ favor_fortune
 # Print cj's todo list.
 if ! hash todo &>/dev/null; then
     echo_safe "Can't find the 'todo' app."
+    bashextraslog "No \`todo\` app found."
 else
     # print todo list
     echo ""
     todo --preview
+    bashextraslog "Loaded \`todo\` from" "$(which todo)"
 fi
 
 # Setup lesspipe, so the `less` command can handle other file types.
 # Another option is to use '$(lessfile)', which processes the entire file
 # before displaying it. `lesspipe` views the file DURING processing, using
 # pipes. -Cj
-hash lesspipe &>/dev/null && eval "$(lesspipe)"
-
+if hash lesspipe &>/dev/null; then
+    eval "$(lesspipe)"
+    bashextraslog "Set up \`lesspipe\`."
+else
+    bashextraslog "\`lesspipe\` not found, no fancy \`less\` formats."
+fi
 # Welcome message.
 welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
 hoststr="${CYAN}$(hostname)${NC}"
@@ -459,4 +478,4 @@ function goto_last_session_dir {
     cd "$lastdir" || return 1
 }
 # Goto the last session's directory.
-goto_last_session_dir
+goto_last_session_dir || bashextraslog "Failed to goto_last_session_dir."

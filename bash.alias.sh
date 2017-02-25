@@ -1041,7 +1041,9 @@ function showmyip {
 function source_verbose {
     # Print a message before sourcing a file (for source-* aliases really).
     [[ -n "$1" ]] || { echo_err "No file given to source!"; return 1; }
-    print_label "\nSourcing" "$1\n"
+    printf "\n%sSourcing%s: %s%s%s\n\n" \
+        "$green" "$NC" \
+        "${BLUE:-$blue}" "$1" "$NC"
     # shellcheck disable=SC1090
     # ...shellcheck will never know the location for this source file.
     source "$1"

@@ -432,7 +432,7 @@ function save_last_session_dir {
         echo "Unable to write to home dir!: ${cjhome:-No home directory is set.}" 1>&2
         return 1
     fi
-    if [[ -v Lastdirfile ]] && [[ -n "$Lastdirfile" ]]; then
+    if [[ -n "$Lastdirfile" ]]; then
         # The file is created if it doesn't exist.
         echo "$PWD" > "$Lastdirfile"
         return 0

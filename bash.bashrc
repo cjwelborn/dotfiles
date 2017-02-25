@@ -16,13 +16,31 @@ else
 	cjhome="/root"
 fi
 
+# Basic echo function that only runs in interactive terminals.
+function echo_safe {
+    [[ -z "$PS1" ]] && return
+    local cyan=$'\e[0;36m' BLUE=$'\e[1;34m' green=$'\e[0;32m'
+    local underlined=$'\e[4m' NC=$'\e[0m'
+
+    printf "%s%45s%s: " "$cyan" "$(caller)" "$NC"
+    [[ -n "$2" ]] && printf "%s" "$underlined"
+    printf "%s%s%s" "$green" "${1//\\n/$'\n'}" "$NC"
+    if [[ -n "$2" ]]; then
+        printf ": %s%s%s\n" "$BLUE" "${2//\\n/$'\n'}" "$NC"
+    else
+        printf "\n"
+    fi
+}
+
+
 # Enable cj's non-interactive bash stuff.
 nonactive_extras_name="bash.extras.non-interactive.sh"
 nonactive_extras_path="$cjhome/$nonactive_extras_name"
 if [[ -f "$nonactive_extras_path" ]]; then
+    # shellcheck source=/home/cj/bash.extras.non-interactive.sh
     source "$nonactive_extras_path"
 else
-    [ -n "$PS1" ] && echo "Non-interactive bash file not found: $nonactive_extras_path"
+    echo_safe "Non-interactive bash file not found" "$nonactive_extras_path"
 fi
 
 # If not running interactively, don't do anything --------------------
@@ -72,13 +90,13 @@ EOF
 fi
 
 # if the command-not-found package is installed, use it
-if [ -x /usr/lib/command-not-found -o -x /usr/share/command-not-found ]; then
+if [[ -x /usr/lib/command-not-found ]] || [[ -x /usr/share/command-not-found ]]; then
     function command_not_found_handle {
         # check because c-n-f could've been removed in the meantime
-        if [ -x /usr/lib/command-not-found ]; then
+        if [[ -x /usr/lib/command-not-found ]]; then
            /usr/bin/python /usr/lib/command-not-found -- "$1"
            return $?
-        elif [ -x /usr/share/command-not-found ]; then
+        elif [[ -x /usr/share/command-not-found ]]; then
            /usr/bin/python /usr/share/command-not-found -- "$1"
            return $?
         else
@@ -91,7 +109,9 @@ fi
 active_extras_name="bash.extras.interactive.sh"
 active_extras_path="$cjhome/$active_extras_name"
 if [[ -f "$active_extras_path" ]]; then
+    # shellcheck source=/home/cj/bash.extras.interactive.sh
     source "$active_extras_path"
 elif [[ -f "$HOME/$active_extras_name" ]]; then
+    # shellcheck source=/home/cj/bash.extras.interactive.sh
     source "$HOME/$active_extras_name"
 fi

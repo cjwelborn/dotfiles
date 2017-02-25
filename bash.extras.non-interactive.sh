@@ -27,13 +27,6 @@ export LC_ALL=en_US.UTF-8
 
 hash ksshaskpass &>/dev/null && export SSH_ASKPASS="/usr/bin/ksshaskpass"
 
-function _echo {
-    # Echo only in interactive mode.
-    if [[ -n "$PS1" ]]; then
-        echo "$@"
-    fi
-}
-
 if [[ -d "/home/cjwelborn" ]]; then
     # Remote
     cjhome="/home/cjwelborn"
@@ -172,6 +165,6 @@ setxkbmap -option "grp:switch,grp:alt_shift_toggle,grp_led:scroll" -layout "us,g
 #         Default setting: 62312
 # Usual running processes: 252
 ulimit_proc_max=5000
-ulimit -S -u "$ulimit_proc_max" 2>/dev/null && printf "Set process limit: %s\n" "$ulimit_proc_max"
+ulimit -S -u "$ulimit_proc_max" 2>/dev/null && echo_safe "Set process limit" "$ulimit_proc_max"
 unset -v ulimit_proc_max
 

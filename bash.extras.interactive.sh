@@ -29,17 +29,6 @@ function bashextraslog {
     echo -e "$@" >> "$bashextraslogfile"
 }
 echo "Loading bash.extras.interactive.sh, cjhome=$cjhome" > "$bashextraslogfile"
-defined_colr=0
-if ! hash colr &>/dev/null; then
-    defined_colr=1
-    function colr {
-        echo -e "$1"
-    }
-fi
-
-function bashextrasecho {
-    colr "$1" "green"
-}
 
 # Set font if using a tty (1-6).
 if [[ "$TERM" == "linux" ]]; then
@@ -98,7 +87,7 @@ export bg_blue=$'\e[44m'
 export bg_magenta=$'\e[45m'
 export bg_cyan=$'\e[46m'
 export bg_white=$'\e[47m'
-
+export underlined=$'\e[4m'
 
 # ------------------------------- LESS COLORS --------------------------------
 # Capabilities:
@@ -168,7 +157,7 @@ function fzf_setup {
     bashextraslog "Loading fzf keybindings from: $fzf_source"
     # shellcheck source=/home/cj/.fzf.bash
     source "$fzf_source"
-    bashextrasecho "Fzf fuzzy finder available: Ctrl + T"
+    echo_safe "Fzf fuzzy finder available" "Ctrl + T"
     return 0
 }
 fzf_setup || bashextraslog "No fzf available..."
@@ -309,50 +298,52 @@ function favor_fortune {
     # databases.
     # Falls back to no color if lolcat is missing.
     # Falls back to normal distribution if favorites are missing.
-    if hash fortune &>/dev/null; then
-        local filtercmd
-        if hash lolcat &>/dev/null; then
-            # Filter the fortunes through lolcat.
-            filtercmd='lolcat'
-        elif hash ccat &>/dev/null; then
-            filtercmd='ccat --rainbow'
-        else
-            # Plain output (using cat).
-            filtercmd='cat'
-        fi
-        local fortunefiles
-        fortunefiles=($(find /usr/share/games/fortunes/ -iregex '[^\.]+$'))
-
-        declare -a fortunedbs
-        local filepath
-        local dbname
-        for filepath in "${fortunefiles[@]}"; do
-            dbname="${filepath##*/}"
-            [[ -z "$dbname" ]] && continue
-            fortunedbs+=("$dbname")
-        done
-
-        # Favorite fortune dbs, with a percentage showing their chance at display.
-        # The rest are split equally.
-        # All of them together must not equal 100%, to give the others a chance.
-        declare -A fortunefavs
-        fortunefavs=(
-            ["50%"]="irc_debian_hackers"
-            ["25%"]="ascii-art"
-            ["15%"]="computers"
-        )
-        declare -a fortuneargs
-        local favorchance
-        local favordb
-        for favorchance in "${!fortunefavs[@]}"; do
-            favordb="${fortunefavs[$favorchance]}"
-            if [[ -e "/usr/share/games/fortunes/$favordb" ]]; then
-                fortuneargs+=("$favorchance" "$favordb")
-                bashextraslog "Found fortune file: $favordb, set to: $favorchance"
-            fi
-        done
-        fortune "${fortuneargs[@]}" "${fortunedbs[@]}" | "$filtercmd"
+    if ! hash fortune &>/dev/null; then
+        return 1
     fi
+    declare -a filtercmd
+    if hash colr &>/dev/null; then
+        filtercmd=(colr --truecolor --rainbow)
+    elif hash lolcat &>/dev/null; then
+        # Filter the fortunes through lolcat.
+        filtercmd=(lolcat)
+    else
+        # Plain output (using cat).
+        filtercmd=(cat)
+    fi
+    local fortunefiles
+    fortunefiles=($(find /usr/share/games/fortunes/ -iregex '[^\.]+$'))
+
+    declare -a fortunedbs
+    local filepath
+    local dbname
+    for filepath in "${fortunefiles[@]}"; do
+        dbname="${filepath##*/}"
+        [[ -z "$dbname" ]] && continue
+        fortunedbs+=("$dbname")
+    done
+
+    # Favorite fortune dbs, with a percentage showing their chance at display.
+    # The rest are split equally.
+    # All of them together must not equal 100%, to give the others a chance.
+    declare -A fortunefavs
+    fortunefavs=(
+        ["50%"]="irc_debian_hackers"
+        ["25%"]="ascii-art"
+        ["15%"]="computers"
+    )
+    declare -a fortuneargs
+    local favorchance
+    local favordb
+    for favorchance in "${!fortunefavs[@]}"; do
+        favordb="${fortunefavs[$favorchance]}"
+        if [[ -e "/usr/share/games/fortunes/$favordb" ]]; then
+            fortuneargs+=("$favorchance" "$favordb")
+            bashextraslog "Found fortune file: $favordb, set to: $favorchance"
+        fi
+    done
+    fortune "${fortuneargs[@]}" "${fortunedbs[@]}" | "${filtercmd[@]}"
+
 }
 
 # Alias Manager scripts.
@@ -363,20 +354,26 @@ if [[ -f "$aliasmgrfile" ]]; then
     # shellcheck disable=SC1091
     # ..This file doesn't always exist, shellcheck.
     source "$aliasmgrfile"
-    bashextraslog "Loaded aliasmgr scripts: $aliasmgrfile"
+    echo_safe "Loaded aliasmgr scripts" "$aliasmgrfile"
 elif [[ -f "$cjhome/bash.alias.sh" ]]; then
     # shellcheck source=/home/cj/bash.alias.sh
     source "$cjhome/bash.alias.sh"
-    bashextraslog "Loaded plain alias script: $cjhome/bash.alias.sh"
+    echo_safe "Loaded plain alias script" "$cjhome/bash.alias.sh"
 fi
 unset -v aliasmgrfile
 
 # Show fortune, 'favor_fortune' will be available globally.
+# shellcheck disable=SC2034
+while read -r char; do
+    printf "-"
+done < <(seq 1 "$COLUMNS")
+unset char
+printf "\n\n"
 favor_fortune
 
 # Print cj's todo list.
 if ! hash todo &>/dev/null; then
-    bashextraslog "Can't find the 'todo' app."
+    echo_safe "Can't find the 'todo' app."
 else
     # print todo list
     echo ""
@@ -411,7 +408,17 @@ trap _exit_handler EXIT
 
 function save_last_session_dir {
     # Shortcut for `echo "$PWD" > "$Lastdirfile"`
-    echo "$PWD" > "$Lastdirfile"
+    # This function may be called from somewhere else (another script?).
+    if [[ -z "$cjhome" ]] || [[ ! -w "$cjhome" ]]; then
+        echo "Unable to write to home dir!: ${cjhome:-No home directory is set.}" 1>&2
+        return 1
+    fi
+    if [[ -v Lastdirfile ]] && [[ -n "$Lastdirfile" ]]; then
+        # The file is created if it doesn't exist.
+        echo "$PWD" > "$Lastdirfile"
+        return 0
+    fi
+    return 1
 }
 
 function get_last_session_dir {
@@ -453,9 +460,3 @@ function goto_last_session_dir {
 }
 # Goto the last session's directory.
 goto_last_session_dir
-
-# Remove extra funcs/vars.
-# bashextraslog needs to hang around for favor_fortune.
-unset -f bashextrasecho
-((defined_colr)) && unset -f colr
-unset defined_colr

@@ -30,13 +30,15 @@ alias clearscreen='echo -e "\033[2J\033[?25l"'
 # Vertical directory listing for 'dirs', with indexes.
 alias dirs="dirs -v"
 # Sudo update and dist-upgrade.
-alias distupgrade="sudo apt-get update && sudo apt-get dist-upgrade"
+alias distupgrade="sudo apt update && sudo apt-get dist-upgrade"
 # Echo $PATH, with newlines.
 alias echo_path="echo \$PATH | tr ':' '\n'"
 # Tell exa to always group directories first.
 alias exa="exa --group-directories-first"
 # When using the `expand` command, use 4 spaces for tab. (I never use expand.)
 alias expand="expand --tabs=4"
+# Sudo update and full-upgrade.
+alias fullupgrade="sudo apt update && sudo apt full-upgrade"
 # Run green with -vv for more verbosity.
 alias greenv="green -vv"
 # use colors and regex for grep always
@@ -202,6 +204,16 @@ function ask {
 function birthday {
     # Show this machine's "birth day".
     date --date="$(stat --printf '%y' /lost+found)"
+}
+
+function c {
+    # `cd` to a directory, and save the directory name with
+    # save_last_session_dir.
+    # If save_last_session_dir doesn't exist, then just cd to the directory.
+    cd "$@" || return
+    if type -t save_last_session_dir &>/dev/null && save_last_session_dir; then
+        print_label "Saved last dir" "$PWD"
+    fi
 }
 
 function camrecord {
@@ -492,13 +504,7 @@ function fzfcmddir {
 }
 
 function fzfco {
-    # use fzf to git checkout a branch. Arguments are passed to `git branch`.
-    local branches branch
-    # Using colr to strip codes from the branch names.
-    hash colr &>/dev/null || {
-        echo_err "This function requires \`colr\`. Install it with \`pip\`."
-        return 1
-    }
+    # Use fzf to select a git branch to checkout.
     local aliasfile
     aliasfile="$(readlink -f "${BASH_SOURCE[0]}")"
     local aliasfilefmt="${cyan}${aliasfile}${NC}"
@@ -507,26 +513,9 @@ function fzfco {
 It runs ${blue}git checkout [selection]${NC} if you select a branch."
         return 0
     fi
-    branches=$(git branch "$@" | grep -v HEAD | colr -x) || {
-        echo_err "${RED}No branches found.${NC}"
-        return 1
-    }
-    branch=$(echo "$branches" | fzf-tmux -d $(( 2 + $(wc -l <<< "$branches") )) +m)
-    [[ -z "$branch" ]] && {
-        echo_err "${RED}No branch selected.${NC}"
-        return 1
-    }
-    # Remove leading spaces.
-    branch="${branch#*  }"
-    # shellcheck disable=SC2001
-    # ..No shellcheck, I can't use ${var//search/replace}.
-    branch="$(echo "$branch" | sed "s#remotes/[^/]*/##")"
-    [[ -z "$branch" ]] && {
-        echo_err "${RED}Something happened while trimming spaces from the
-branch name on line ${blue}$((LINENO - 3)){$RED}, function \`${cyan}${FUNCNAME[0]}${RED}\` \
-in ${aliasfilefmt}${RED}.${NC}"
-        return 1
-    }
+
+    local branch
+    branch="$(fzfselbranch "$@")" || return 1
     echo "Checking out branch: ${blue}$branch${NC}"
     git checkout "$branch"
 }
@@ -541,30 +530,26 @@ function fzfcoc {
 It runs ${blue}git checkout [selection]${NC} if you select a commit."
         return 0
     fi
-    local commits commit
-    # Using colr to strip codes from the branch names.
-    hash colr &>/dev/null || {
-        echo_err "This function requires \`colr\`. Install it with \`pip\`."
-        return 1
-    }
-
-    commits=$(git log --pretty=oneline --abbrev-commit --reverse | colr -x) || {
-        echo_err "Unable to get commits."
-        return 1
-    }
-    commit=$(echo "$commits" | fzf --tac +s +m -e) || {
-        echo_err "No commit selected."
-        return 1
-    }
-    local commitdesc="${commit#* }"
-    # Just get the hash for the commit, remove all descriptions.
-    commit="${commit%% *}"
-    [[ -n "$commit" ]] || {
-        echo_err "Something happened while trimming whitespace from commit!"
-        return 1
-    }
+    local commit
+    commit="$(fzfselcommit "$@")" || return 1
     echo "Checking out commit: ${blue}${commit}${NC}: ${cyan}${commitdesc}${NC}"
     git checkout "$commit"
+}
+
+
+function fzfdir {
+    # Use fzf to select a file in a certain directory, and print the filename.
+    # Uses the fzfp function to select the file.
+    if [[ -z "$1" ]] || [[ "$1" =~ ^(-h)|(--help)$ ]]; then
+        printf "
+Selects files with fzf in a certain directory.
+
+    Usage: fzfdir DIR
+    \n"
+        [[ -z "$1" ]] && return 1
+        return 0
+    fi
+    find "${1:-$PWD}" | fzfp --multi
 }
 
 # shellcheck disable=SC2120
@@ -589,21 +574,6 @@ function fzfp {
         ) 2>/dev/null | head -n${linecnt}
     "
     printf "%s" "$(fzf "$@" --preview "$highlightcmd")"
-}
-
-function fzfdir {
-    # Use fzf to select a file in a certain directory, and print the filename.
-    # Uses the fzfp function to select the file.
-    if [[ -z "$1" ]] || [[ "$1" =~ ^(-h)|(--help)$ ]]; then
-        printf "
-Selects files with fzf in a certain directory.
-
-    Usage: fzfdir DIR
-    \n"
-        [[ -z "$1" ]] && return 1
-        return 0
-    fi
-    find "${1:-$PWD}" | fzfp --multi
 }
 
 fzfkill_LINENO=$((LINENO + 1))
@@ -660,6 +630,82 @@ function fzfkill {
         echo_err "Unable to kill process: $procinfo"$'\n'"..maybe try --sudo?"
         return 1
     }
+}
+
+function fzfselbranch {
+    # use fzf to git checkout a branch. Arguments are passed to `git branch`.
+    local branches branch
+    # Using colr to strip codes from the branch names.
+    hash colr &>/dev/null || {
+        echo_err "This function requires \`colr\`. Install it with \`pip\`."
+        return 1
+    }
+    local aliasfile
+    aliasfile="$(readlink -f "${BASH_SOURCE[0]}")"
+    local aliasfilefmt="${cyan}${aliasfile}${NC}"
+    if [[ "$*" =~ (-h)|(--help) ]]; then
+        echo "This is the \`${cyan}${FUNCNAME[0]}${NC}\` function from ${aliasfilefmt}.
+It lets you select a git branch, and prints it for use with other commands."
+        return 0
+    fi
+    branches=$(git branch "$@" | grep -v HEAD | colr -x) || {
+        echo_err "${RED}No branches found.${NC}"
+        return 1
+    }
+    branch=$(echo "$branches" | fzf-tmux -d $(( 2 + $(wc -l <<< "$branches") )) +m)
+    [[ -z "$branch" ]] && {
+        echo_err "${RED}No branch selected.${NC}"
+        return 1
+    }
+    # Remove leading spaces.
+    branch="${branch#*  }"
+    # shellcheck disable=SC2001
+    # ..No shellcheck, I can't use ${var//search/replace}.
+    branch="$(echo "$branch" | sed "s#remotes/[^/]*/##")"
+    [[ -z "$branch" ]] && {
+        echo_err "${RED}Something happened while trimming spaces from the
+branch name on line ${blue}$((LINENO - 3)){$RED}, function \`${cyan}${FUNCNAME[0]}${RED}\` \
+in ${aliasfilefmt}${RED}.${NC}"
+        return 1
+    }
+
+    printf "%s" "$branch"
+}
+
+function fzfselcommit {
+    # Use fzf to select a git commit.
+    # Use fzf to checkout a specific commit.
+    local aliasfile
+    aliasfile="$(readlink -f "${BASH_SOURCE[0]}")"
+    local aliasfilefmt="${cyan}${aliasfile}${NC}"
+    if [[ "$*" =~ (-h)|(--help) ]]; then
+        echo "This is the \`${cyan}${FUNCNAME[0]}${NC}\` function from ${aliasfilefmt}.
+It lets you to select a git commit id, and prints it for use with other commands"
+        return 0
+    fi
+    local commits commit
+    # Using colr to strip codes from the branch names.
+    hash colr &>/dev/null || {
+        echo_err "This function requires \`colr\`. Install it with \`pip\`."
+        return 1
+    }
+
+    commits=$(git log --pretty=oneline --abbrev-commit --reverse | colr -x) || {
+        echo_err "Unable to get commits."
+        return 1
+    }
+    commit=$(echo "$commits" | fzf --tac +s +m -e) || {
+        echo_err "No commit selected."
+        return 1
+    }
+    local commitdesc="${commit#* }"
+    # Just get the hash for the commit, remove all descriptions.
+    commit="${commit%% *}"
+    [[ -n "$commit" ]] || {
+        echo_err "Something happened while trimming whitespace from commit!"
+        return 1
+    }
+    printf "%s" "$commit"
 }
 
 function fzfshow {
@@ -860,6 +906,47 @@ function print_failure {
     write_failure "$((${COLUMNS:-80} - 10))"
 }
 
+function print_label {
+    # Print a label/value pair using colr.
+    # Arguments:
+    #   $1 : Label to print.
+    #   $2 : Optional value to print.
+    #   $3 : Label color offset number or one of (blue, purple).
+    local lbl="${1//\\n/$'\n'}" val="${2//\\n/$'\n'}" mode=$3
+    if ! hash colr &>/dev/null; then
+        # Colr not available.
+        printf "%s" "$lbl"
+        if [[ -n "$val" ]]; then
+            printf ": %s\n" "$val"
+        else
+            printf "\n"
+        fi
+        return 0
+    fi
+    # Use Colr.
+    [[ -n "$lbl" ]] || {
+        echo_err "No label value passed to print_label!"
+        return 1
+    }
+    declare -a colr_args
+    if [[ -z "$mode" ]]; then
+        colr_args=(-f green)
+    elif [[ "${mode,,}" == "blue" ]]; then
+        colr_args=(-R -T -q .2 -o 18)
+    elif [[ "${mode,,}" == "purple" ]]; then
+        colr_args=(-R -T -q .25 -o 11)
+    else
+        colr_args=(-R -T -q .25 -o "$mode")
+    fi
+    if [[ -n "$val" ]]; then
+        printf "%s: %s\n" \
+            "$(colr -s underline "${colr_args[@]}" "$lbl")" \
+            "$(colr -f blue -s bright "$val")"
+    else
+        printf "%s\n" "$(colr "${colr_args[@]}" "$lbl")"
+    fi
+}
+
 function print_status {
     # Display a status msg with colored marker (success, failure, warning)
     # using the print_success type functions
@@ -954,7 +1041,7 @@ function showmyip {
 function source_verbose {
     # Print a message before sourcing a file (for source-* aliases really).
     [[ -n "$1" ]] || { echo_err "No file given to source!"; return 1; }
-    printf "\nSourcing: %s\n\n" "$1"
+    print_label "\nSourcing" "$1\n"
     # shellcheck disable=SC1090
     # ...shellcheck will never know the location for this source file.
     source "$1"
@@ -1169,3 +1256,5 @@ function ziplist {
 
     unzip -l "$@"
 }
+
+echo_safe "Aliases loaded from" "${BASH_SOURCE[0]}"

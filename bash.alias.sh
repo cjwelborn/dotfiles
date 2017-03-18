@@ -41,6 +41,8 @@ alias expand="expand --tabs=4"
 alias fullupgrade="sudo apt update && sudo apt full-upgrade"
 # Run green with -vv for more verbosity.
 alias greenv="green -vv"
+# Same as greenv, but using Python 2.7.
+alias greenv2="green2 -vv"
 # use colors and regex for grep always
 alias grep="grep -E --color=always"
 # use colors for howdoi.
@@ -53,6 +55,8 @@ alias kdelogout="qdbus org.kde.ksmserver /KSMServer logout 0 0 2"
 alias l="ls -a --color --group-directories-first"
 # List all files in dir
 alias la="ls -Fa --color"
+# Let less use color codes, for ~/.lessfilter.
+alias less="less -r"
 # show current linux kernel info/version
 alias linuxversion="uname -a"
 # Long list dir
@@ -295,6 +299,9 @@ function cj_aliases {
                 prepend="$tryprepend"
             fi
         done
+        # For aliases to commands with no arguments.
+        [[ "$cmdargs" == "$cmdname" ]] && cmdargs=""
+        # Fix braces/parens.
         [[ -n "$prepend" ]] && cmdargs="$prepend $cmdargs"
 
         printf "%s%24s%s: " "$blue" "$name" "$NC"
@@ -848,6 +855,15 @@ function pipall {
             return
         fi
     done
+}
+
+function pipdevelop {
+    # Shortcut to `python3 setup.py develop --user`, with sanity checks.
+    [[ -f ./setup.py ]] || {
+        echo_err "No setup.py found in: $PWD"
+        return 1
+    }
+    python3 setup.py develop --user "$@"
 }
 
 function pipinstall {

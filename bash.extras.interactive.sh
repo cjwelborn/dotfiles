@@ -375,13 +375,21 @@ elif [[ -f "$plainaliasfile" ]]; then
 fi
 unset aliasmgrfile
 unset plainaliasfile
-# Show fortune, 'favor_fortune' will be available globally.
-# shellcheck disable=SC2034
-while read -r char; do
+
+# ----------------- Output divider, actual message follows. -----------------
+for ((i=0; i < COLUMNS; i++)); do
     printf "-"
-done < <(seq 1 "$COLUMNS")
-unset char
+done
+unset i
 printf "\n\n"
+
+# Show weather, if wttr.in script is available.
+hash weather &>/dev/null && {
+    weather --current
+    bashextraslog "Loaded \`weather\` from" "$(which weather)"
+}
+
+# Show fortune, 'favor_fortune' will be available globally.
 favor_fortune
 
 # Print cj's todo list.
@@ -391,7 +399,7 @@ if ! hash todo &>/dev/null; then
 else
     # print todo list
     echo ""
-    todo --preview
+    todo --preview --important
     bashextraslog "Loaded \`todo\` from" "$(which todo)"
 fi
 

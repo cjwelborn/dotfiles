@@ -113,7 +113,7 @@ alias servers="sudo netstat -ltupn"
 # Use 4 spaces always with shfmt.
 alias shfmt="shfmt -i 4"
 # Aliases to re-source dotfiles.
-alias source-bashrc="source_verbose /etc/bash.bashrc"
+alias source-bashrc="source_verbose ?/etc/bash.bashrc ?\$cjhome/.bashrc"
 alias source-alias="source_verbose ~/bash.alias.sh"
 alias source-vars="source_verbose ~/bash.variables.sh"
 alias source-active="source_verbose ~/bash.extras.interactive.sh"
@@ -1056,13 +1056,36 @@ function showmyip {
 
 function source_verbose {
     # Print a message before sourcing a file (for source-* aliases really).
-    [[ -n "$1" ]] || { echo_err "No file given to source!"; return 1; }
-    printf "\n%sSourcing%s: %s%s%s\n\n" \
+    (($#)) || { echo_err "No file/s given to source!"; return 1; }
+    local filepath debug_errs=0 report_errs=1 errs=0
+    for filepath in "$@"; do
+        report_errs=1
+        # Filepaths starting with '?' mean that it may not exist, so
+        # don't print any errors.
+        [[ "$filepath" == ?* ]] && {
+            report_errs=0
+            filepath="${filepath:1}"
+        }
+        [[ "$filepath" == !* ]] && {
+            debug_errs=1
+            report_errs=0
+            filepath="${filepath:1}"
+        }
+        [[ -e "$filepath" ]] || {
+            ((errs++))
+            ((debug_errs)) && echo_err "Trying to source non-existent file: $filepath"
+            ((report_errs)) && echo_err "File does not exist: $filepath"
+            continue
+        }
+        printf "\n%sSourcing%s: %s%s%s\n\n" \
         "$green" "$NC" \
-        "${BLUE:-$blue}" "$1" "$NC"
-    # shellcheck disable=SC1090
-    # ...shellcheck will never know the location for this source file.
-    source "$1"
+        "${BLUE:-$blue}" "$filepath" "$NC"
+        # shellcheck disable=SC1090
+        # ...shellcheck will never know the location for this source file.
+        source "$filepath" || ((errs++))
+    done
+
+    return $errs
 }
 
 function sshver {

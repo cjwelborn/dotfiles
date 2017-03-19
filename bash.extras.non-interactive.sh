@@ -243,3 +243,10 @@ else
 fi
 unset -v ulimit_proc_max
 
+acme_env_file="$cjhome/.acme.sh/acme.sh.env"
+if [[ -f "$acme_env_file" ]]; then
+    # shellcheck source=/home/cjwelborn/.acme.sh/acme.sh.env
+    source "$acme_env_file"
+    echo_safe "Sourced acme.sh file" "$acme_env_file"
+    bashextraslog "Sourced acme.sh file" "$acme_env_file"
+fi

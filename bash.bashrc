@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # System-wide .bashrc file for interactive bash(1) shells.
 
 # To enable the settings / commands in this file for login shells as well,
@@ -22,7 +22,10 @@ function echo_safe {
     local cyan=$'\e[0;36m' BLUE=$'\e[1;34m' green=$'\e[0;32m'
     local underlined=$'\e[4m' NC=$'\e[0m'
 
-    printf "%s%45s%s: " "$cyan" "$(caller)" "$NC"
+	local callerinfo
+	callerinfo="$(caller)"
+	callerinfo="${callerinfo//$cjhome/\~}"
+    [[ ! "$callerinfo" =~ NULL ]] && printf "%s%55s%s: " "$cyan" "$callerinfo" "$NC"
     [[ -n "$2" ]] && printf "%s" "$underlined"
     printf "%s%s%s" "$green" "${1//\\n/$'\n'}" "$NC"
     if [[ -n "$2" ]]; then

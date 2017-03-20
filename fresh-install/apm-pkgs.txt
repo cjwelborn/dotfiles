@@ -11,6 +11,7 @@ autocomplete-bash-builtins
 autocomplete-clang
 autocomplete-html-entities
 autocomplete-python
+busy-signal
 color-picker
 dark-bint-syntax
 dark-flat-ui
@@ -18,10 +19,10 @@ ficus-syntax
 git-time-machine
 highlight-selected
 hyperclick
+intentions
 language-awk
 language-bats
 language-cpp14
-language-python-django-templates
 language-rust
 language-viml
 linter
@@ -32,6 +33,7 @@ linter-flake8
 linter-rust
 linter-scss-lint
 linter-shellcheck
+linter-ui-default
 minimap
 minimap-highlight-selected
 pigments
@@ -40,7 +42,7 @@ python-autopep8
 racer
 seti-ui
 snow-dark-syntax
+solarized-dark-ui
 sort-lines
 tabs-to-spaces
-terminal-plus
 todo-show

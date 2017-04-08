@@ -1062,7 +1062,7 @@ function source_verbose {
         report_errs=1
         # Filepaths starting with '?' mean that it may not exist, so
         # don't print any errors.
-        [[ "$filepath" == ?* ]] && {
+        [[ "$filepath" =~ ^? ]] && {
             report_errs=0
             filepath="${filepath:1}"
         }
@@ -1298,4 +1298,6 @@ function ziplist {
     unzip -l "$@"
 }
 
-echo_safe "Aliases loaded from" "${BASH_SOURCE[0]}"
+# echo_safe is only set when bash.bashrc is sourced, but
+# this alias file is sourced in a git alias, so forget this echo.
+type -t echo_safe &>/dev/null && echo_safe "Aliases loaded from" "${BASH_SOURCE[0]}"

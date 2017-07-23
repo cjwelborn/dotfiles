@@ -223,10 +223,18 @@ fi
 
 # Make alt + shift toggle us/greek layout (enables using chars like λ)
 kblayout="us,gr"
-kbopts="grp:switch,grp:alt_shift_toggle,grp_led:scroll"
-setxkbmap -option "$kbopts" -layout "$kblayout"
-bashextraslog "Set keyboard layout options" "$kbopts"
-bashextraslog "Set keyboard layouts" "$kblayout"
+kbopts="grp:switch,grp:alt_caps_toggle,grp_led:scroll"
+if setxkbmap -query | grep 'alt_caps_toggle'; then
+    bashextraslog "Keyboard layout already set" "$kblayout"
+    bashextraslog "Keyboard layout options" "$kbopts"
+else
+    if setxkbmap -option "$kbopts" -layout "$kblayout"; then
+        bashextraslog "Set keyboard layout options" "$kbopts"
+        bashextraslog "Set keyboard layouts" "$kblayout"
+    else
+        bashextraslog "Unable to set keyboard layout options!"
+    fi
+fi
 unset kblayout
 unset kbopts
 # Set limit for number of processes.

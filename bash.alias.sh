@@ -863,6 +863,11 @@ function pipdevelop {
         echo_err "No setup.py found in: $PWD"
         return 1
     }
+    [[ "$*" =~ (-h)|(--help) ]] && {
+        echo "Usage: pipdevelop [--uninstall]"
+        echo "..run \`./setup.py develop --help\` for more info."
+        return 0
+    }
     python3 setup.py develop --user "$@"
 }
 

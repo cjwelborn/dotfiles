@@ -26,7 +26,7 @@ function echo_safe {
 	callerinfo="$(caller)"
 	callerinfo="${callerinfo//$cjhome/\~}"
     [[ ! "$callerinfo" =~ NULL ]] && printf "%s%55s%s: " "$cyan" "$callerinfo" "$NC"
-    [[ -n "$2" ]] && printf "%s" "$underlined"
+    [[ -n "$2" ]] && printf "%b" "$underlined"
     printf "%s%s%s" "$green" "${1//\\n/$'\n'}" "$NC"
     if [[ -n "$2" ]]; then
         printf ": %s%s%s\n" "$BLUE" "${2//\\n/$'\n'}" "$NC"

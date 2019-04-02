@@ -224,7 +224,7 @@ fi
 # Make alt + shift toggle us/greek layout (enables using chars like λ)
 kblayout="us,gr"
 kbopts="grp:switch,grp:alt_caps_toggle,grp_led:scroll"
-if setxkbmap -query | grep 'alt_caps_toggle'; then
+if setxkbmap -query | grep 'alt_caps_toggle' &>/dev/null; then
     bashextraslog "Keyboard layout already set" "$kblayout"
     bashextraslog "Keyboard layout options" "$kbopts"
 else

@@ -9,6 +9,11 @@
 # -Christopher Welborn
 
 # Aliases:
+# shortcut to adb devices -l
+alias adbdevices="adb devices -l"
+alias adbdevs="adb devices -l"
+# shortcut to newer fastboot executable (more features).
+alias adbfast="fastboot-new"
 # try to fix broken packages...
 alias aptfix="sudo apt-get install -f"
 # Shortcut to sudo apt-get install
@@ -16,7 +21,7 @@ alias aptinstall="sudo apt-get install"
 # Use --force-overwrite with any apt-get command.
 alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrite'"
 # Use .agignore file always, if it exists.
-[[ -e ~/.agignore ]] && alias ag="ag --path-to-agignore ~/.agignore"
+[[ -e ~/.agignore ]] && alias ag="ag --path-to-ignore ~/.agignore"
 # http://overthewire.org/wargames/bandit
 alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org"
 # BFG Repo-Cleaner for git.
@@ -35,8 +40,12 @@ alias distupgrade="sudo apt update && sudo apt-get dist-upgrade"
 alias echo_path="echo \$PATH | tr ':' '\n'"
 # Tell exa to always group directories first.
 alias exa="exa --group-directories-first"
+# Use exa in tree mode.
+alias exat="exal -T"
 # When using the `expand` command, use 4 spaces for tab. (I never use expand.)
 alias expand="expand --tabs=4"
+# Use CDecl in C++ mode.
+alias explaincpp="cdecl explain -+"
 # Sudo update and full-upgrade.
 alias fullupgrade="sudo apt update && sudo apt full-upgrade"
 # Run green with -vv for more verbosity.
@@ -88,6 +97,10 @@ alias netstatcount="netstat -n | awk '{print \$1}' | egrep -v 'Proto|Active' | s
 alias netstatopen="netstat -n | egrep -v '^unix|Proto|Active' | sort -k 4,4"
 # Use nmap to show open ports on this machine.
 alias nmapopen="sudo nmap -sT -O localhost | grep 'open'"
+# Use nosetests in verbose mode.
+alias nosetests2="nosetests-2.7 -v"
+# Use nosetests in verbose mode.
+alias nosetests3="nosetests-3.4 -v"
 # Use npm install with a prefix set to $HOME
 alias npminstall="npm install --prefix=\$HOME"
 # List all installed perl modules (shortcode for cpan -l)
@@ -112,12 +125,14 @@ alias pykdedocpages='google-chrome "/usr/share/doc/python-kde4-doc/html/index.ht
 alias servers="sudo netstat -ltupn"
 # Use 4 spaces always with shfmt.
 alias shfmt="shfmt -i 4"
+# Allow Ctrl + C to close the `sl` command (ls typo teaser).
+alias sl="sl -el"
 # Aliases to re-source dotfiles.
-alias source-bashrc="source_verbose ?/etc/bash.bashrc ?\$cjhome/.bashrc"
-alias source-alias="source_verbose ~/bash.alias.sh"
-alias source-vars="source_verbose ~/bash.variables.sh"
-alias source-active="source_verbose ~/bash.extras.interactive.sh"
-alias source-nonactive="source_verbose ~/bash.extras.non-interactive.sh"
+alias source-bashrc="source_verbose \?/etc/bash.bashrc \?\$cjhome/.bashrc"
+alias source-alias="source_verbose \$cjhome/bash.alias.sh"
+alias source-vars="source_verbose \$cjhome/bash.variables.sh"
+alias source-active="source_verbose \$cjhome/bash.extras.interactive.sh"
+alias source-nonactive="source_verbose \$cjhome/bash.extras.non-interactive.sh"
 # SSH into koding.com vm (with XForwarding)
 alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io"
 # Show temperature for machines with 'sensors' installed.
@@ -320,8 +335,18 @@ function cj_functions {
     local filename=~/bash.alias.sh
     local userpat="${1:-.+}"
     [[ "$userpat" =~ ^(-h)|(--help)$ ]] && {
-        printf "Usage: cj_functions [PATTERN]\n"
+        printf "Usage:\n"
+        printf "    cj_functions [-c] [PATTERN]\n\n"
+        printf "Options:\n"
+        printf "    PATTERN        : Text/Regex pattern to match.\n"
+        printf "    -c,--contains  : Search the body of the function.\n"
         return 0
+    }
+    local contains=0
+    [[ "$userpat" =~ ^(-c)|(--contains)$ ]] && {
+        # Searching the body of the function.
+        userpat="${2:-.+}"
+        contains=1
     }
     local blue="${blue:-$'\e[0;34m'}"
     local cyan="${cyan:-$'\e[0;36m'}"
@@ -329,10 +354,18 @@ function cj_functions {
     local NC="${NC:-$'\e[0m'}"
     local name body
     while read -r name; do
+        if ((!contains)) && [[ ! "$name" =~ $userpat ]]; then
+            # Matching names, and it doesn't match.
+            continue
+        fi
+
         # Get the function body from `type`, and indent it.
-        [[ "$name" =~ $userpat ]] || continue
         if ! body="$(type "$name" | tail -n +3 | awk '{ print "    "$0 }')"; then
             echo_err "Can't get function body for: $name"
+            continue
+        fi
+        if ((contains)) && [[ ! "$body" =~ $userpat ]]; then
+            # Searching body, and it doesn't match.
             continue
         fi
         printf "\n%s%s%s:\n" "$blue" "$name" "$NC"
@@ -360,6 +393,36 @@ function diff {
 function echo_err {
     # Echo to stderr (with escape codes).
     echo -e "$@" 1>&2
+}
+
+function editnewplugin {
+    # Shortcut to `cedit ~/scripts/new/plugins/<name>.py`
+    local tryfile tryfiles
+    if [[ -z "$1" ]]; then
+        echo_err "Usage: editnewplugin <plugin_name>"
+        return 1
+    fi
+
+    declare -a tryfiles=(
+        "$cjhome/scripts/new/plugins/$1.py"
+        "$cjhome/scripts/new/plugins/$1/$1.py"
+        "$cjhome/scripts/new/plugins/makefile/$1.makefile"
+        "$cjhome/scripts/new/plugins/makefile/$1"
+        "$cjhome/scripts/new/plugins/$1"
+    )
+    for tryfile in "${tryfiles[@]}"; do
+        [[ -f "$tryfile" ]] && {
+            cedit "$tryfile"
+            return 0
+        }
+    done
+    echo_err "Can't find that plugin file: $1"
+    echo_err "Searched:"
+    for tryfile in "${tryfiles[@]}"; do
+        printf "    %s\n" "$tryfile"
+    done
+    return 1
+
 }
 
 function exal {
@@ -571,16 +634,23 @@ function fzfp {
     # Tell fzf how to preview the file, {} is replaced with the filepath.
     # Don't highlight binary files, if highlight fails, fallback to cat.
     local highlightcmd
-    highlightcmd="(
-        $highlighter {} || \
-        if [[ \$(file {}) =~ text ]]; then \
-            cat {}; \
-        else \
-            echo 'Binary file, no preview available.'; \
-        fi\
-        ) 2>/dev/null | head -n${linecnt}
-    "
-    printf "%s" "$(fzf "$@" --preview "$highlightcmd")"
+    if hash fzf-preview &>/dev/null; then
+        # Use fzf-preview.sh script, instead of the basic highlighter.
+        highlightcmd="$(hash -t fzf-preview) {}"
+    else
+        highlightcmd="(
+            $highlighter {} || \
+            if [[ \$(file {}) =~ text ]]; then \
+                cat {}; \
+            else \
+                echo 'Binary file, no preview available.'; \
+            fi\
+            ) 2>/dev/null | head -n${linecnt}
+        "
+    fi
+    local selfilepath
+    selfilepath="$(fzf "$@" --preview "$highlightcmd")" || return 1
+    printf "%s" "$selfilepath"
 }
 
 fzfkill_LINENO=$((LINENO + 1))
@@ -726,7 +796,7 @@ It allows you to view commits by selecting them."
         return 0
     fi
     git log --graph --color=always \
-        --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
+        --format="%C(auto)%h%d %s %C(#4f4f5f) %C(bold)%cr" "$@" |
     fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
         --bind "ctrl-m:execute:
 (grep -o '[a-f0-9]\{7\}' | head -1 |
@@ -768,6 +838,87 @@ function kd {
         ls -a --group-directories-first --color=always
     fi
 
+}
+
+function makeasm {
+    # Unconditionally compile a nasm file into an executable.
+    # Arguments:
+    #       $1 : .asm file to compile
+    # Optional Arguments:
+    #       $2 : output binary name
+    #       -d,--debug  : Compile for debug.
+    #
+    local args
+    declare -a args=("$@")
+    local arg asmfile binary objectfile debugmode=1
+    local cflags ldflags
+    declare -a cflags
+    declare -a ldflags
+    cflags=("-felf64" "-Wall")
+    ldflags=("-O1")
+    for arg in "${args[@]}"; do
+        if [[ "$arg" =~ ^-d|--debug$ ]]; then
+            debugmode=1
+        elif [[ "$arg" =~ ^-h|--help$ ]]; then
+            echo -e "\nmakeasm function from bash.alias.sh"
+            echo -e "\nUsage:"
+            echo -e "    makeasm FILE [BINARY] [-d]"
+            echo -e "\nOptions:"
+            echo -e "    FILE        : Assembly file to compile."
+            echo -e "    BINARY      : Optional name for executable."
+            echo -e "    -d,--debug  : Add debug options to nasm."
+            return 0
+        else
+            if [[ -z "$asmfile" ]]; then
+                # First arg is always asmfile
+                asmfile="$arg"
+            else
+                # Any other non-debug flag is the binary name.
+                binary="$arg"
+            fi
+            if [[ "$asmfile" =~ ^- ]] || [[ "$binary" =~ ^- ]]; then
+                echo -e "\nUnknown flag argument: $arg" 1>&2
+                return 1
+            fi
+        fi
+    done
+    [[ -n "$asmfile" ]] || {
+        echo -e "\nNo .asm file specified." 1>&2
+        return 1
+    }
+    [[ -z "$binary" ]] && binary="${asmfile%%.*}"
+    objectfile="${asmfile%%.*}.o"
+    if ((debugmode)); then
+        cflags+=("-F" "dwarf" "-g")
+    else
+        cflags+=("-Ox")
+        ldflags+=("--strip-all")
+    fi
+    # Make the object files.
+    printf "\nnasm %s %s" "${cflags[*]}" "$asmfile"
+    if nasm "${cflags[@]}" "$asmfile"; then
+        printf " - %bsuccess%b\n" "$green" "$NOCOLOR"
+        # Link the objects, make an executable.
+        printf "ld -o %s %s %s" "$binary" "${ldflags[*]}" "$objectfile"
+        if ld -o "$binary" "${ldflags[@]}" "$objectfile"; then
+            printf " - %bsuccess%b\n" "$green" "$NOCOLOR"
+            # echo "Created $binary"
+            # Remove the object file.
+            if [[ -n "$objectfile" ]] && [[ -f "$objectfile" ]]; then
+                printf "rm %s" "$objectfile"
+                if rm "$objectfile"; then
+                    printf " - %bsuccess%b\n" "$green" "$NOCOLOR"
+                else
+                    printf " - %bfailed%b\n" "$RED" "$NOCOLOR"
+                fi
+            fi
+        else
+            printf " - %bfailed%b\n" "$RED" "$NOCOLOR"
+        fi
+    else
+        printf " - %bfailed%b\n" "$RED" "$NOCOLOR"
+    fi
+    set +x
 }
 
 function mkdircd {
@@ -1063,14 +1214,16 @@ function source_verbose {
     # Print a message before sourcing a file (for source-* aliases really).
     (($#)) || { echo_err "No file/s given to source!"; return 1; }
     local filepath debug_errs=0 report_errs=1 errs=0
+    local optionalpat='^\?'
     for filepath in "$@"; do
         report_errs=1
         # Filepaths starting with '?' mean that it may not exist, so
         # don't print any errors.
-        [[ "$filepath" =~ ^? ]] && {
+        [[ "$filepath" =~ $optionalpat ]] && {
             report_errs=0
             filepath="${filepath:1}"
         }
+        # Filepaths starting with '!' will trigger debug mode.
         [[ "$filepath" == !* ]] && {
             debug_errs=1
             report_errs=0
@@ -1078,8 +1231,12 @@ function source_verbose {
         }
         [[ -e "$filepath" ]] || {
             ((errs++))
-            ((debug_errs)) && echo_err "Trying to source non-existent file: $filepath"
-            ((report_errs)) && echo_err "File does not exist: $filepath"
+            ((debug_errs)) && {
+                echo_err "source_verbose(): Trying to source non-existent file: $filepath"
+            }
+            ((report_errs)) && {
+                echo_err "source_verbose(): File does not exist: $filepath"
+            }
             continue
         }
         printf "\n%sSourcing%s: %s%s%s\n\n" \
@@ -1305,4 +1462,12 @@ function ziplist {
 
 # echo_safe is only set when bash.bashrc is sourced, but
 # this alias file is sourced in a git alias, so forget this echo.
-type -t echo_safe &>/dev/null && echo_safe "Aliases loaded from" "${BASH_SOURCE[0]}"
+type -t echo_safe &>/dev/null && {
+    if aliascnt="$(egrep '^((function)|(alias))' ~/bash.alias.sh | wc -l)"; then
+        aliasplural="aliases/functions"
+        ((aliascnt == 1)) && aliasplural="alias/function"
+        echo_safe "$aliascnt $aliasplural loaded from" "${BASH_SOURCE[0]}"
+    else
+        echo_safe "Aliases loaded from" "${BASH_SOURCE[0]}"
+    fi
+}

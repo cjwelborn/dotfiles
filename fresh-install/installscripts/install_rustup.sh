@@ -25,7 +25,7 @@ function confirm {
     local answer
     echo -e "\n${2:-Type C to exit the program.}"
     printf "%s (y/N/c):" "${1:-Continue?}"
-    read -p " " answer
+    read -r -p " " answer
     if [[ "$answer" =~ ^[cC] ]]; then
         echo_err "\nUser cancelled.\n"
         exit 2

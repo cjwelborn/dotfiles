@@ -360,7 +360,7 @@ function favor_fortune {
 aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
 plainaliasfile="$cjhome/bash.alias.sh"
 if [[ -f "$aliasmgrfile" ]]; then
-    echo ""
+    echo_safe ""
     # shellcheck source=/usr/share/aliasmgr/aliasmgr_scripts.sh
     # shellcheck disable=SC1091
     # ..This file doesn't always exist, shellcheck.
@@ -485,5 +485,53 @@ function goto_last_session_dir {
     fi
     cd "$lastdir" || return 1
 }
-# Goto the last session's directory.
-goto_last_session_dir || bashextraslog "Failed to goto_last_session_dir."
+
+function is_child_of {
+    # Returns a success exit code if this shell's parent pid/name matches
+    # any of the arguments.
+    # Arguments:
+    #   $1..  : Parent name/pid to check.
+    local arg args pidofname trypid argpidname ppidname
+    declare -a args=("$@")
+    for arg in "${args[@]}"; do
+        # Plain pid given, possible direct match?
+        [[ "$arg" == "$PPID" ]] && return 0
+        # Plain pid given, test name..
+        argpidname="$(pid_name "$arg")"
+        [[ -n "$argpidname" ]] && [[ "$argpidname" == "$PPID" ]] && return 0
+        argpidname="$(basename "$argpidname")"
+        [[ -n "$argpidname" ]] && [[ "$argpidname" == "$PPID" ]] && return 0
+        # Process name given.
+        # Get pids of process name...
+        pidofname="$(pidof "$arg")" || continue
+        for trypid in $pidofname; do
+            [[ "$trypid" == "$PPID" ]] && return 0
+        done
+        # Process name given.
+        # Test parent name against arg.
+        ppidname="$(pid_name "$PPID")"
+        [[ -n "$ppidname" ]] && [[ "$ppidname" == "$arg" ]] && return 0
+    done
+    return 1
+}
+
+function pid_name {
+    # Print the name of a pid, from /proc/<pid>/cmdline.
+    # Arguments:
+    #   $1  : PID to get the name for.
+    [[ -n "$1" ]] || {
+        echo_safe "No pid given to pid_name function!"
+        return 1
+    }
+    # The `tr -d '\0'` will suppress a warning about null bytes,
+    # ..even though I am using the null bytes as a separator.
+    head -z -n 1 "/proc/$1/cmdline" 2>/dev/null | tr -d '\0' || return 1
+    return 0
+}
+
+if is_child_of "dolphin"; then
+    bashextraslog "Not changing directory, we're in dolphin."
+else
+    # Goto the last session's directory.
+    goto_last_session_dir || bashextraslog "Failed to goto_last_session_dir."
+fi

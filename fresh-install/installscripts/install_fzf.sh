@@ -81,26 +81,26 @@ for arg; do
 done
 fzf_url="https://github.com/junegunn/fzf"
 
-if ((do_dryrun)); then
-    run_cmd mkdir -p ~/clones || fail "Unable to create clones directory!"
-    run_cmd cd ~/clones
-    run_cmd git clone "$fzf_url" || fail "Unable to clone fzf: $fzf_url"
-    run_cmd cd fzf || fail "Unable to cd into ~/clones/fzf!"
-    if [[ -e ~/clones/fzf/install ]]; then
-        run_cmd .~/clones/fzf/install || fail "Installer failed!"
-    else
-        fail "Install script was missing: ./install"
-    fi
 
-    compsrc=~/clones/fzf/shell/completion.bash
-    compdest=/etc/bash_completion.d/fzf
-    if [[ -e "$compdest" ]]; then
-        echo_err "Completion file already exists: $compdest"
+run_cmd mkdir -p ~/clones || fail "Unable to create clones directory!"
+run_cmd cd ~/clones
+run_cmd git clone "$fzf_url" || fail "Unable to clone fzf: $fzf_url"
+run_cmd cd fzf || fail "Unable to cd into ~/clones/fzf!"
+if [[ -e ~/clones/fzf/install ]]; then
+    run_cmd .~/clones/fzf/install || fail "Installer failed!"
+else
+    fail "Install script was missing: ./install"
+fi
+
+compsrc=~/clones/fzf/shell/completion.bash
+compdest=/etc/bash_completion.d/fzf
+if [[ -e "$compdest" ]]; then
+    echo_err "Completion file already exists: $compdest"
+else
+    if [[ -e "$compsrc" ]]; then
+        run_cmd sudo cp "$compsrc" "$compdest" || fail "Failed to copy bash completions!"
     else
-        if [[ -e "$compsrc" ]]; then
-            run_cmd sudo cp "$compsrc" "$compdest" || fail "Failed to copy bash completions!"
-        else
-            echo_err "Missing bash completion file: $compsrc"
-        fi
+        echo_err "Missing bash completion file: $compsrc"
     fi
 fi
+

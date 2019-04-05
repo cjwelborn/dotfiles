@@ -79,6 +79,18 @@ for arg; do
             nonflags+=("$arg")
     esac
 done
+hash fzf &>/dev/null && {
+    echo_err "\`fzf\` is already installed!"
+    if hash whichfile &>/dev/null; then
+        whichfile fzf
+    elif hash which &>/dev/null; then
+        which fzf
+    else
+        type fzf
+    fi
+    exit 1
+}
+
 fzf_url="https://github.com/junegunn/fzf"
 
 

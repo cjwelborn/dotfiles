@@ -49,7 +49,7 @@ filename_remote_debs="$appdir/remote-debs.txt"
 dir_installscripts="$appdir/installscripts"
 declare -a install_script_files install_scripts
 if [[ -d "$dir_installscripts" ]]; then
-    # Get ALL files in ./installscripts, but only used script-like files.
+    # Get ALL files in ./installscripts, but only use script-like files.
     # The file will be made executable later, if not already executable.
     install_script_files=(${dir_installscripts}/*)
     # Files that AREN'T install scripts for sure (by extension):

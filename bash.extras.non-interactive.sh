@@ -251,6 +251,7 @@ else
 fi
 unset -v ulimit_proc_max
 
+# Auto LetsEncrypt cert renewel program. Not being used right now.
 acme_env_file="$cjhome/.acme.sh/acme.sh.env"
 if [[ -f "$acme_env_file" ]]; then
     # shellcheck source=/home/cjwelborn/.acme.sh/acme.sh.env

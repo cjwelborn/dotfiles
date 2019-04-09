@@ -78,10 +78,11 @@ export Py2userpkgs="$Py2homepkgs"
 export Py2pkgs="/usr/local/lib/python2.7/dist-packages"
 export Py2mainpkgs="/usr/lib/python2.7/"
 
-export Py3homepkgs="$Home/.local/lib/python3.5/site-packages"
+export Py3version="3.6"
+export Py3homepkgs="$Home/.local/lib/python${Py3version}/site-packages"
 export Py3userpkgs="$Py3homepkgs"
-export Py3pkgs="/usr/local/lib/python3.5/dist-packages"
-export Py3mainpkgs="/usr/lib/python3.5/"
+export Py3pkgs="/usr/local/lib/python${Py3version}/dist-packages"
+export Py3mainpkgs="/usr/lib/python${Py3version}/"
 
 # KDE ServiceMenu directories
 export Servicemenus_local_old="$Home/.kde/share/kde4/services/ServiceMenus/"

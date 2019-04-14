@@ -955,6 +955,47 @@ function move_to_col {
     echo -en "\\033[${colnum}G"
 }
 
+function mvmk {
+    # Move a file to a sub-directory, but create the directory if it doesn't
+    # exist.
+    # Arguments:
+    #   $1  : File to move.
+    #   $2  : Destination (can be a sub-dir to create, or complete path.)
+    if [[ -z "$1" ]] || [[ -z "$2" ]] || [[ "$1" =~ ^(-h)|(--help)$ ]]; then
+        echo -e "\nThis is the \`mvmk\` function from bash.alias.sh."
+        echo -e "\n    It moves files, but will create the destination dir if needed."
+        echo -e "\n    Usage: mvmk FILE DEST"
+        return 0
+    fi
+    local filepath="$1" destpath="$2"
+    local destdir="${destpath%/*}"
+    [[ -n "$destdir" ]] || {
+        # No destination directory.
+        mv "$filepath" "$destpath" || {
+            echo_err "Cannot move simple file: $filepath"
+            echo_err "                     to: $destpath"
+            return 1
+        }
+        echo "mv $filepath $destpath"
+        return 0
+    }
+    [[ -d "$destdir" ]] || {
+        mkdir -p "$destdir" || {
+            echo_err "Cannot create directory: $destdir"
+            return 1
+        }
+        echo "mkdir $destdir"
+    }
+    mv "$filepath" "$destpath" && {
+        echo "mv $filepath $destpath"
+        return 0
+    }
+    echo_err "Cannot move: $filepath"
+    echo_err "         to: $destpath"
+    return 1
+}
+
+
 function my_ip {
     # set MY_IP variable
     MY_IP=$(/sbin/ifconfig w0 | awk '/inet/ { print $2 } ' | \

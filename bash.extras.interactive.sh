@@ -413,6 +413,29 @@ if hash lesspipe &>/dev/null; then
 else
     bashextraslog "\`lesspipe\` not found, no fancy \`less\` formats."
 fi
+
+# Setup some dynamic completions.
+if hash green &>/dev/null; then
+_green_completion() {
+    local word opts
+    COMPREPLY=()
+    word="${COMP_WORDS[COMP_CWORD]}"
+    opts="$(green --options)"
+    case "${word}" in
+        -*)
+            COMPREPLY=( $(compgen -W "${opts}" -- "${word}") )
+            return 0
+            ;;
+    esac
+    COMPREPLY=( $(compgen -W "$(green --completions "${word}" | tr '\n' ' ')" -- "${word}") )
+}
+complete -F _green_completion green
+complete -F _green_completion greenv
+    bashextraslog "Set up bash completions for: greenv"
+else
+    bashextraslog "\`green\` not found, no bash completions generated for it."
+fi
+
 # Welcome message.
 welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
 hoststr="${CYAN}$(hostname)${NC}"

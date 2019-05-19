@@ -92,9 +92,9 @@ alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4"
 alias mypyi="mypy --ignore-missing-imports"
 # shellcheck disable=SC2142
 # Use netstat to count socket types that are currently open.
-alias netstatcount="netstat -n | awk '{print \$1}' | egrep -v 'Proto|Active' | sort | uniq -c"
+alias netstatcount="netstat -n | awk '{print \$1}' | grep -E -v 'Proto|Active' | sort | uniq -c"
 # Use netstat to show open net sockets.
-alias netstatopen="netstat -n | egrep -v '^unix|Proto|Active' | sort -k 4,4"
+alias netstatopen="netstat -n | grep -E -v '^unix|Proto|Active' | sort -k 4,4"
 # Use nmap to show open ports on this machine.
 alias nmapopen="sudo nmap -sT -O localhost | grep 'open'"
 # Use nosetests in verbose mode.
@@ -258,8 +258,7 @@ function cdgodir {
     fi
 
     local godirname
-    godirname="$(godir "$1")"
-    if (( $? == 0 )); then
+    if godirname="$(godir "$1")"; then
         cd "$godirname" || return 1
         return 0
     fi
@@ -327,7 +326,7 @@ function cj_aliases {
             printf "%s%s%s " "$green" "$cmdname" "$NC"
             printf "%s%s%s\n" "$cyan" "$cmdargs" "$NC"
         fi
-    done < <(egrep '^alias' "$filename" | cut -d ' ' -f2-)
+    done < <(grep -E '^alias' "$filename" | cut -d ' ' -f2-)
 }
 
 function cj_functions {
@@ -375,7 +374,7 @@ function cj_functions {
         else
             printf "%s%s%s\n" "$cyan" "$body" "$NC"
         fi
-    done < <(egrep '^function' "$filename" | cut -d ' ' -f2)
+    done < <(grep -E '^function' "$filename" | cut -d ' ' -f2)
 }
 
 function diff {
@@ -1504,7 +1503,7 @@ function ziplist {
 # echo_safe is only set when bash.bashrc is sourced, but
 # this alias file is sourced in a git alias, so forget this echo.
 type -t echo_safe &>/dev/null && {
-    if aliascnt="$(egrep '^((function)|(alias))' ~/bash.alias.sh | wc -l)"; then
+    if aliascnt="$(grep -c -E '^((function)|(alias))' ~/bash.alias.sh)"; then
         aliasplural="aliases/functions"
         ((aliascnt == 1)) && aliasplural="alias/function"
         echo_safe "$aliascnt $aliasplural loaded from" "${BASH_SOURCE[0]}"

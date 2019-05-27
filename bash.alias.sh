@@ -920,6 +920,29 @@ function makeasm {
     set +x
 }
 
+function manname {
+    # Search man pages, by name only, using regex.
+    # Shortcut to 'whatis --regex '^$1'.
+    local usage_str="manname (alias from ${BASH_SOURCE[0]})
+
+Usage:
+    manname PATTERN
+
+Options:
+    PATTERN  : Regex/text to search for.
+"
+    [[ -z "$1" ]] && {
+        echo "$usage_str" 1>&2
+        echo -e "\nNo arguments given." 1>&2
+        return 1
+    }
+    [[ "$1" =~ (-h)|(--help) ]] && {
+        echo "$usage_str"
+        return 0
+    }
+    whatis --regex "$1"
+}
+
 function mkdircd {
     # Make dir and cd to it
     # mkdir -p "$@" && eval cd "\"\$$#\""

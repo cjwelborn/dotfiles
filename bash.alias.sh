@@ -26,6 +26,10 @@ alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrit
 alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org"
 # BFG Repo-Cleaner for git.
 alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar"
+# Read `bind -P` in a better format.
+alias bindp="bind -P | grep -v 'not bound' | sed 's/ can be found on / /' | column -t -n | sort -k2"
+# Print all keys bound with readline.
+alias binds="{ bind -s; bind -p; bind -X; } | awk '/^[#]/ { next } { print }' | sort"
 # Print cjs aliases.
 alias cjaliases="cj_aliases"
 # Print cjs functions.
@@ -61,19 +65,19 @@ alias idledev="pythondev \$Clones/cpython/Lib/idlelib/idle.py"
 # logout command for KDE...
 alias kdelogout="qdbus org.kde.ksmserver /KSMServer logout 0 0 2"
 # Shortcut for ls (also helpful for my broken keyboard)
-alias l="ls -a --color --group-directories-first"
+alias l="\ls -a --color --group-directories-first"
 # List all files in dir
-alias la="ls -Fa --color"
+alias la="\ls -Fa --color --group-directories-first"
 # Let less use color codes, for ~/.lessfilter.
-alias less="less -r"
+alias less="\less -r"
 # show current linux kernel info/version
 alias linuxversion="uname -a"
 # Long list dir
-alias ll="ls -alh --group-directories-first --color=always"
+alias ll="\ls -alh --color=always --group-directories-first"
 # Load ps3 controller driver.
 alias loadps3="sudo xboxdrv --detach-kernel-driver --silent"
 # List dir
-alias ls="ls -a --color=always --group-directories-first"
+alias ls="\ls -a --color=always --group-directories-first"
 # Just lsof -i
 alias lsofnet="lsof -i"
 # List dir using tree
@@ -138,7 +142,7 @@ alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io"
 # Show temperature for machines with 'sensors' installed.
 alias temp="which sensors &>/dev/null && sensors -f"
 # Use 256 colors with tmux.
-alias tmux="tmux -2"
+alias tmux="\tmux -2"
 # Shows directory tree, directories only...
 alias treed="tree -a -C -d | more -s"
 # Runs twisted console (reactor already running)
@@ -837,6 +841,24 @@ function kd {
         ls -a --group-directories-first --color=always
     fi
 
+}
+
+function lf {
+    # Shortcut to ls -dah (doesn't expand directories),
+    # If you don't provide any arguments to `ls -dah`, it simply prints '.'.
+    # That's not very useful, so this functions ensures that it will show
+    # all files in the current directory when no other arguments are used.
+    (($#)) || {
+        # No args, the -- is for shellcheck, it claims that it could cause trouble.
+        # It also doesn't like the use of the builtin \ls.
+        # shellcheck disable=SC1001
+        \ls -dah --group-directories-first --color=always -- *
+        return
+    }
+    # Has args, just forward them.
+    # shellcheck disable=SC1001
+    \ls -dah --group-directories-first --color=always "$@"
+    return
 }
 
 function makeasm {

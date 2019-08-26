@@ -30,12 +30,16 @@ alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar"
 alias bindp="bind -P | grep -v 'not bound' | sed 's/ can be found on / /' | column -t -n | sort -k2"
 # Print all keys bound with readline.
 alias binds="{ bind -s; bind -p; bind -X; } | awk '/^[#]/ { next } { print }' | sort"
+# Shortcut to valgrind --tool=callgrind
+alias callgrind="valgrind --tool=callgrind"
 # Print cjs aliases.
 alias cjaliases="cj_aliases"
 # Print cjs functions.
 alias cjfunctions="cj_functions"
 # Clears the BASH screen by trickery.
 alias clearscreen='echo -e "\033[2J\033[?25l"'
+# Use cppcheck with some sane defaults.
+alias cppchecks="cppcheck --std=c11 --enable=all --force --inline-suppr --error-exitcode=1 2>&1"
 # Vertical directory listing for 'dirs', with indexes.
 alias dirs="dirs -v"
 # Sudo update and dist-upgrade.
@@ -151,6 +155,8 @@ alias twistedconsole="python -m twisted.conch.stdio"
 alias ubuntuversion="lsb_release -a"
 # List local users from /etc/passwd
 alias userslocal="cut -d: -f1 /etc/passwd | sort"
+# Use valgrind's memcheck tool with full leak check.
+alias valgrindmemcheck="valgrind --tool=memcheck --leak-check=full --track-origins=yes"
 # Monitor who is pinging this machine.
 alias watchpings="sudo tcpdump -i w0 icmp and icmp[icmptype]=icmp-echo"
 # Opens a Postgres shell for welbornprod_db.
@@ -854,6 +860,15 @@ function lf {
         # shellcheck disable=SC1001
         \ls -dah --group-directories-first --color=always -- *
         return
+    }
+    (($# == 1)) && {
+        # One arg, if it's a directory this is just going to print the
+        # directory name, which is useless. cd and add a '*' to list all files.
+        [[ -d $1 ]] && {
+            #shellcheck disable=SC1001
+            \ls -dah --group-directories-first --color=always -- "$1"/*
+            return
+        }
     }
     # Has args, just forward them.
     # shellcheck disable=SC1001

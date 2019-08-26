@@ -178,7 +178,9 @@ function fzf_setup {
     bashextraslog "Loading fzf keybindings from" "$fzf_source"
     # shellcheck source=/home/cj/.fzf.bash
     source "$fzf_source"
-    echo_safe "Fzf fuzzy finder available" "Ctrl + T"
+    echo_safe "Fzf available (fuzzy finder)" "Ctrl + T"
+    echo_safe "Fzf available (history find)" "Ctrl + R"
+    echo_safe "Fzf available (fuzzy cd dir)" " Alt + C"
     return 0
 }
 fzf_setup || bashextraslog "No fzf available..."

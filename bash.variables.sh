@@ -23,42 +23,43 @@ export Aliases="/etc/bash.alias.sh"
 export Apps="$Home/apps"
 export Dump="$Home/dump"
 export Variables="$Home/bash.variables.sh"
+export Sublimeconfig="$Home/.config/sublime-text-3"
+export Sublimepackages="$Sublimeconfig/Packages"
 
 # Remote-only dirs.
 [[ -d "$Home/logs/user" ]] && export Logs="$Home/logs/user"
 # Script dirs
 export Html="$Home/html"
 export Scripts="$Home/scripts"
+export Cprojects="$Scripts/c"
+export Clibs="$Cprojects/libs"
 export Haskell="$Scripts/haskell"
 export Js="$Scripts/js"
 export Teststuff="$Scripts/teststuff"
 export Snippets="$Scripts/snippets"
 export Monoprojects="$Home/monoprojects"
-export Mono="$Monoprojects"
 export Rustprojects="$Scripts/rust"
-export Rustprojs="$Rustprojects"
 
 # Project locations
 export Work=$Scripts
+export Bash="$Work/bash"
 export Cedit="$Work/cedit/cedit"
 export Clones="$Home/clones"
-export Cram="$Work/cram/cram_site"
-export Menuprops="$Work/eclipse/menuprops"
+export Colr="$Work/colr"
+export Colrc="$Work/c/libs/colr"
 export Pyval="$Work/pyval"
+export Textcmd="$Bash/textcmd"
+
 if [[ -d "$Work/welbornprod/wp_site" ]]; then
     export Wp="$Work/welbornprod/wp_site"
 elif [[ -d "$Home/webapps/wp_site/wp_site" ]]; then
     export Wp="$Home/webapps/wp_site/wp_site"
 fi
 [[ -d "$Home/webapps/wp_test/wp_site" ]] && export Wp_test="$Home/webapps/wp_test/wp_site"
-export Unimenu="$Work/eclipse/unimenu"
-export Easysettings="$Work/eclipse/EasySettings"
-export Webgui="$Work/webgui"
-export Webapp=$Webgui
+export Easysettings="$Work/EasySettings"
 
 # Popular clones
 export Cpython="$Clones/cpython"
-
 
 # home dirs
 export Dl="$Home/Downloads"

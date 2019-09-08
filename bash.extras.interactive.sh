@@ -418,7 +418,9 @@ function favor_fortune {
         return 1
     fi
     declare -a filtercmd
-    if hash colr &>/dev/null; then
+    if hash colrc &>/dev/null; then
+        filtercmd=(colrc - rainbow)
+    elif hash colr &>/dev/null; then
         filtercmd=(colr --truecolor --rainbow)
     elif hash lolcat &>/dev/null; then
         # Filter the fortunes through lolcat.

@@ -159,12 +159,6 @@ alias userslocal="cut -d: -f1 /etc/passwd | sort"
 alias valgrindmemcheck="valgrind --tool=memcheck --leak-check=full --track-origins=yes"
 # Monitor who is pinging this machine.
 alias watchpings="sudo tcpdump -i w0 icmp and icmp[icmptype]=icmp-echo"
-# Opens a Postgres shell for welbornprod_db.
-alias wpdb="psql welbornprod_db"
-# Opens SFTP session for welbornprod.com
-alias wpsftp="sftp cjwelborn@cjwelborn.webfactional.com"
-# Opens SSH session on welbornprod.com
-alias wpssh="ssh -X cjwelborn@cjwelborn.webfactional.com"
 
 # Functions:
 function apache {
@@ -812,6 +806,30 @@ It allows you to view commits by selecting them."
 xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
 {}
 FZF-EOF"
+}
+
+function hilite {
+    # Use `highlight` to syntax-highlight a file.
+    # Syntax is based on file extension, and if it's not covered here,
+    # the `highlight` error message will let you know what to do.
+    (($#)) || {
+        if [[ -t 0 ]] && [[ -t 1 ]]; then
+            printf "Reading from stdin until EOF (Ctrl + D)...\n"
+        fi
+    }
+    declare -a hlargs
+    local arg ext
+    for arg; do
+        [[ "$*" =~ -S ]] && break;
+        [[ "$arg" =~ .+?[Mm]akefile ]] && {
+            hlargs+=("-S" "makefile")
+            continue
+        }
+        [[ "$arg" == *.* ]] || continue
+        ext="${arg##*.}"
+        hlargs+=("-S" "$ext")
+    done
+    highlight -O xterm256 --style=molokai "${hlargs[@]}" "$@"
 }
 
 function inetinfo {

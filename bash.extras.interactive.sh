@@ -131,6 +131,18 @@ function set_less_colors() {
 set_less_colors
 unset -f set_less_colors
 bashextraslog "Set \`less\` colors."
+
+# Setup lesspipe, so the `less` command can handle other file types.
+# Another option is to use '$(lessfile)', which processes the entire file
+# before displaying it. `lesspipe` views the file DURING processing, using
+# pipes. -Cj
+if hash lesspipe &>/dev/null; then
+    eval "$(lesspipe)"
+    bashextraslog "Set up \`lesspipe\`."
+else
+    bashextraslog "\`lesspipe\` not found, no fancy \`less\` formats."
+fi
+
 # ---------------------- FZF Fuzzy Finder keybindings. ----------------------
 function fzf_setup {
     local fzf_source="$cjhome/.fzf.bash"
@@ -166,7 +178,9 @@ function fzf_setup {
     bashextraslog "Loading fzf keybindings from" "$fzf_source"
     # shellcheck source=/home/cj/.fzf.bash
     source "$fzf_source"
-    echo_safe "Fzf fuzzy finder available" "Ctrl + T"
+    echo_safe "Fzf available (fuzzy finder)" "Ctrl + T"
+    echo_safe "Fzf available (history find)" "Ctrl + R"
+    echo_safe "Fzf available (fuzzy cd dir)" " Alt + C"
     return 0
 }
 fzf_setup || bashextraslog "No fzf available..."
@@ -300,7 +314,99 @@ else
     }
 fi
 
+# ------------------------------- COMPLETIONS --------------------------------
+
+# Setup some dynamic completions.
+if hash green &>/dev/null; then
+_green_completion() {
+    local word opts
+    COMPREPLY=()
+    word="${COMP_WORDS[COMP_CWORD]}"
+    opts="$(green --options)"
+    case "${word}" in
+        -*)
+            COMPREPLY=( $(compgen -W "${opts}" -- "${word}") )
+            return 0
+            ;;
+    esac
+    COMPREPLY=( $(compgen -W "$(green --completions "${word}" | tr '\n' ' ')" -- "${word}") )
+}
+complete -F _green_completion green
+complete -F _green_completion greenv
+    bashextraslog "Set up bash completions for" "greenv"
+else
+    bashextraslog "\`green\` not found, no bash completions generated for it."
+fi
+
+# --------------------------- Are we running embedded in Dolphin? ------------
+
+function is_child_of {
+    # Returns a success exit code if this shell's parent pid/name matches
+    # any of the arguments.
+    # Arguments:
+    #   $1..  : Parent name/pid to check.
+    local arg args pidofname trypid argpidname ppidname
+    declare -a args=("$@")
+    for arg in "${args[@]}"; do
+        # Plain pid given, possible direct match?
+        [[ "$arg" == "$PPID" ]] && return 0
+        # Plain pid given, test name..
+        argpidname="$(pid_name "$arg")"
+        [[ -n "$argpidname" ]] && [[ "$argpidname" == "$PPID" ]] && return 0
+        argpidname="$(basename "$argpidname")"
+        [[ -n "$argpidname" ]] && [[ "$argpidname" == "$PPID" ]] && return 0
+        # Process name given.
+        # Get pids of process name...
+        pidofname="$(pidof "$arg")" || continue
+        for trypid in $pidofname; do
+            [[ "$trypid" == "$PPID" ]] && return 0
+        done
+        # Process name given.
+        # Test parent name against arg.
+        ppidname="$(pid_name "$PPID")"
+        [[ -n "$ppidname" ]] && [[ "$ppidname" == "$arg" ]] && return 0
+    done
+    return 1
+}
+
+function pid_name {
+    # Print the name of a pid, from /proc/<pid>/cmdline.
+    # Arguments:
+    #   $1  : PID to get the name for.
+    [[ -n "$1" ]] || {
+        echo_safe "No pid given to pid_name function!"
+        return 1
+    }
+    # The `tr -d '\0'` will suppress a warning about null bytes,
+    # ..even though I am using the null bytes as a separator.
+    head -z -n 1 "/proc/$1/cmdline" 2>/dev/null | tr -d '\0' || return 1
+    return 0
+}
+
+running_in_dolphin=0
+is_child_of "dolphin" && running_in_dolphin=1
+
 # --------------------------- AUTO-LOADED PROGRAMS ---------------------------
+
+# Alias Manager scripts or normal alias file?
+aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
+plainaliasfile="$cjhome/bash.alias.sh"
+if [[ -f "$aliasmgrfile" ]]; then
+    echo_safe ""
+    # shellcheck source=/usr/share/aliasmgr/aliasmgr_scripts.sh
+    # shellcheck disable=SC1091
+    # ..This file doesn't always exist, shellcheck.
+    source "$aliasmgrfile"
+    echo_safe "Loaded aliasmgr scripts" "$aliasmgrfile"
+    bashextraslog "Using aliasmgr scripts" "$aliasmgrfile"
+elif [[ -f "$plainaliasfile" ]]; then
+    # shellcheck source=/home/cj/bash.alias.sh
+    source "$plainaliasfile"
+    echo_safe "Loaded plain alias script" "$plainaliasfile"
+    bashextraslog "Using plain alias script" "$plainaliasfile"
+fi
+unset aliasmgrfile
+unset plainaliasfile
 
 function favor_fortune {
     # Try displaying a fortune filtered by lolcat (rainbow colored),
@@ -312,7 +418,9 @@ function favor_fortune {
         return 1
     fi
     declare -a filtercmd
-    if hash colr &>/dev/null; then
+    if hash colrc &>/dev/null; then
+        filtercmd=(colrc - rainbow)
+    elif hash colr &>/dev/null; then
         filtercmd=(colr --truecolor --rainbow)
     elif hash lolcat &>/dev/null; then
         # Filter the fortunes through lolcat.
@@ -356,74 +464,51 @@ function favor_fortune {
 
 }
 
-# Alias Manager scripts.
-aliasmgrfile="/usr/share/aliasmgr/aliasmgr_scripts.sh"
-plainaliasfile="$cjhome/bash.alias.sh"
-if [[ -f "$aliasmgrfile" ]]; then
-    echo_safe ""
-    # shellcheck source=/usr/share/aliasmgr/aliasmgr_scripts.sh
-    # shellcheck disable=SC1091
-    # ..This file doesn't always exist, shellcheck.
-    source "$aliasmgrfile"
-    echo_safe "Loaded aliasmgr scripts" "$aliasmgrfile"
-    bashextraslog "Using aliasmgr scripts" "$aliasmgrfile"
-elif [[ -f "$plainaliasfile" ]]; then
-    # shellcheck source=/home/cj/bash.alias.sh
-    source "$plainaliasfile"
-    echo_safe "Loaded plain alias script" "$plainaliasfile"
-    bashextraslog "Using plain alias script" "$plainaliasfile"
-fi
-unset aliasmgrfile
-unset plainaliasfile
 
-# ----------------- Output divider, actual message follows. -----------------
-for ((i=0; i < COLUMNS; i++)); do
-    printf "-"
-done
-unset i
-printf "\n\n"
-
-# Show weather, if wttr.in script is available.
-hash weather &>/dev/null && {
-    weather --current
-    bashextraslog "Loaded \`weather\` from" "$(which weather)"
-}
-
-# Show fortune, 'favor_fortune' will be available globally.
-favor_fortune
-
-# Print cj's todo list.
-if ! hash todo &>/dev/null; then
-    echo_safe "Can't find the 'todo' app."
-    bashextraslog "No \`todo\` app found."
+# -------------------------- Run auto-load programs --------------------------
+#                      (...if we are not inside dolphin.)
+if ((running_in_dolphin)); then
+    echo_safe "Not running auto-load programs" "(running inside Dolphin)"
+    bashextraslog "Not running auto-load programs, we're running in Dolphin."
 else
-    # print todo list
-    echo ""
-    todo --preview --important
-    bashextraslog "Loaded \`todo\` from" "$(which todo)"
-fi
+    # Print an output divider.
+    for ((i=0; i < COLUMNS; i++)); do
+        printf "-"
+    done
+    unset i
+    printf "\n\n"
 
-# Setup lesspipe, so the `less` command can handle other file types.
-# Another option is to use '$(lessfile)', which processes the entire file
-# before displaying it. `lesspipe` views the file DURING processing, using
-# pipes. -Cj
-if hash lesspipe &>/dev/null; then
-    eval "$(lesspipe)"
-    bashextraslog "Set up \`lesspipe\`."
-else
-    bashextraslog "\`lesspipe\` not found, no fancy \`less\` formats."
+    # Show weather, if wttr.in script is available.
+    hash weather &>/dev/null && {
+        weather --current
+        bashextraslog "Loaded \`weather\` from" "$(which weather)"
+    }
+
+    # Show fortune, 'favor_fortune' will be available globally.
+    favor_fortune
+
+    # Print cj's todo list.
+    if ! hash todo &>/dev/null; then
+        echo_safe "Can't find the 'todo' app."
+        bashextraslog "No \`todo\` app found."
+    else
+        # print todo list
+        echo ""
+        todo --preview --important
+        bashextraslog "Loaded \`todo\` from" "$(which todo)"
+    fi
+
+    # Welcome message.
+    welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
+    hoststr="${CYAN}$(hostname)${NC}"
+    ips=($(hostname -I))
+    ipstr="${RED}${ips[0]}${NC}"
+    echo -e "\n$welcomemsg  ${BLUE}$(date)${NC}  $hoststr ($ipstr)"
+    # These vars are not needed globally.
+    unset -v welcomemsg hoststr ips ipstr
 fi
-# Welcome message.
-welcomemsg="${BLUE}Bash ${RED}${BASH_VERSION%.*} ${CYAN}Loaded${NC}"
-hoststr="${CYAN}$(hostname)${NC}"
-ips=($(hostname -I))
-ipstr="${RED}${ips[0]}${NC}"
-echo -e "\n$welcomemsg  ${BLUE}$(date)${NC}  $hoststr ($ipstr)"
-# These vars are not needed globally.
-unset -v welcomemsg hoststr ips ipstr
 
 # ---------------------------------- GOODBYE ---------------------------------
-Lastdirfile="$cjhome/.cj-lastdir"
 
 # Setup Exit Message
 function _exit_handler() {
@@ -433,6 +518,7 @@ function _exit_handler() {
 # Trap/Set Exit Function
 trap _exit_handler EXIT
 
+Lastdirfile="$cjhome/.cj-lastdir"
 function save_last_session_dir {
     # Shortcut for `echo "$PWD" > "$Lastdirfile"`
     # This function may be called from somewhere else (another script?).
@@ -486,50 +572,7 @@ function goto_last_session_dir {
     cd "$lastdir" || return 1
 }
 
-function is_child_of {
-    # Returns a success exit code if this shell's parent pid/name matches
-    # any of the arguments.
-    # Arguments:
-    #   $1..  : Parent name/pid to check.
-    local arg args pidofname trypid argpidname ppidname
-    declare -a args=("$@")
-    for arg in "${args[@]}"; do
-        # Plain pid given, possible direct match?
-        [[ "$arg" == "$PPID" ]] && return 0
-        # Plain pid given, test name..
-        argpidname="$(pid_name "$arg")"
-        [[ -n "$argpidname" ]] && [[ "$argpidname" == "$PPID" ]] && return 0
-        argpidname="$(basename "$argpidname")"
-        [[ -n "$argpidname" ]] && [[ "$argpidname" == "$PPID" ]] && return 0
-        # Process name given.
-        # Get pids of process name...
-        pidofname="$(pidof "$arg")" || continue
-        for trypid in $pidofname; do
-            [[ "$trypid" == "$PPID" ]] && return 0
-        done
-        # Process name given.
-        # Test parent name against arg.
-        ppidname="$(pid_name "$PPID")"
-        [[ -n "$ppidname" ]] && [[ "$ppidname" == "$arg" ]] && return 0
-    done
-    return 1
-}
-
-function pid_name {
-    # Print the name of a pid, from /proc/<pid>/cmdline.
-    # Arguments:
-    #   $1  : PID to get the name for.
-    [[ -n "$1" ]] || {
-        echo_safe "No pid given to pid_name function!"
-        return 1
-    }
-    # The `tr -d '\0'` will suppress a warning about null bytes,
-    # ..even though I am using the null bytes as a separator.
-    head -z -n 1 "/proc/$1/cmdline" 2>/dev/null | tr -d '\0' || return 1
-    return 0
-}
-
-if is_child_of "dolphin"; then
+if ((running_in_dolphin)); then
     bashextraslog "Not changing directory, we're in dolphin."
 else
     # Goto the last session's directory.

@@ -4,7 +4,7 @@
 # This is a little safer than just `curl "$rustup_url" -Ssf | sh`.
 # -Christopher Welborn 12-17-2016
 appname="Rustup Installer"
-appversion="0.0.1"
+appversion="0.0.2"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -55,7 +55,7 @@ function fail_usage {
 function get_rustup_sh {
     # Download rustup from $rustup_url using optional args, $1.
     echo_err "Downloading rustup.sh from: $rustup_url"
-    curl "$rustup_url"
+    curl "$@" "$rustup_url" > "$rustup_script"
 }
 
 function print_usage {
@@ -143,4 +143,4 @@ fi
 }
 
 # Run the install script.
-sh "$rustup_script"
+bash "$rustup_script"

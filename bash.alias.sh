@@ -26,12 +26,20 @@ alias apt-get-force-overwrite="sudo apt-get -o Dpkg::Options::='--force-overwrit
 alias banditgame="sshpass -p '8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL' ssh bandit13@bandit.labs.overthewire.org"
 # BFG Repo-Cleaner for git.
 alias bfg="java -jar ~/scripts/tools/bfg-1.12.12.jar"
+# Read `bind -P` in a better format.
+alias bindp="bind -P | grep -v 'not bound' | sed 's/ can be found on / /' | column -t -n | sort -k2"
+# Print all keys bound with readline.
+alias binds="{ bind -s; bind -p; bind -X; } | awk '/^[#]/ { next } { print }' | sort"
+# Shortcut to valgrind --tool=callgrind
+alias callgrind="valgrind --tool=callgrind"
 # Print cjs aliases.
 alias cjaliases="cj_aliases"
 # Print cjs functions.
 alias cjfunctions="cj_functions"
 # Clears the BASH screen by trickery.
 alias clearscreen='echo -e "\033[2J\033[?25l"'
+# Use cppcheck with some sane defaults.
+alias cppchecks="cppcheck --std=c11 --enable=all --force --inline-suppr --error-exitcode=1 2>&1"
 # Vertical directory listing for 'dirs', with indexes.
 alias dirs="dirs -v"
 # Sudo update and dist-upgrade.
@@ -61,19 +69,19 @@ alias idledev="pythondev \$Clones/cpython/Lib/idlelib/idle.py"
 # logout command for KDE...
 alias kdelogout="qdbus org.kde.ksmserver /KSMServer logout 0 0 2"
 # Shortcut for ls (also helpful for my broken keyboard)
-alias l="ls -a --color --group-directories-first"
+alias l="\ls -a --color --group-directories-first"
 # List all files in dir
-alias la="ls -Fa --color"
+alias la="\ls -Fa --color --group-directories-first"
 # Let less use color codes, for ~/.lessfilter.
-alias less="less -r"
+alias less="\less -r"
 # show current linux kernel info/version
 alias linuxversion="uname -a"
 # Long list dir
-alias ll="ls -alh --group-directories-first --color=always"
+alias ll="\ls -alh --color=always --group-directories-first"
 # Load ps3 controller driver.
 alias loadps3="sudo xboxdrv --detach-kernel-driver --silent"
 # List dir
-alias ls="ls -a --color=always --group-directories-first"
+alias ls="\ls -a --color=always --group-directories-first"
 # Just lsof -i
 alias lsofnet="lsof -i"
 # List dir using tree
@@ -92,9 +100,9 @@ alias mostmemory="ps aux | head -n1 && ps aux | sort -k 4"
 alias mypyi="mypy --ignore-missing-imports"
 # shellcheck disable=SC2142
 # Use netstat to count socket types that are currently open.
-alias netstatcount="netstat -n | awk '{print \$1}' | egrep -v 'Proto|Active' | sort | uniq -c"
+alias netstatcount="netstat -n | awk '{print \$1}' | grep -E -v 'Proto|Active' | sort | uniq -c"
 # Use netstat to show open net sockets.
-alias netstatopen="netstat -n | egrep -v '^unix|Proto|Active' | sort -k 4,4"
+alias netstatopen="netstat -n | grep -E -v '^unix|Proto|Active' | sort -k 4,4"
 # Use nmap to show open ports on this machine.
 alias nmapopen="sudo nmap -sT -O localhost | grep 'open'"
 # Use nosetests in verbose mode.
@@ -138,7 +146,7 @@ alias sshkoding="ssh -v -X vm-0.cjwelborn.koding.kd.io"
 # Show temperature for machines with 'sensors' installed.
 alias temp="which sensors &>/dev/null && sensors -f"
 # Use 256 colors with tmux.
-alias tmux="tmux -2"
+alias tmux="\tmux -2"
 # Shows directory tree, directories only...
 alias treed="tree -a -C -d | more -s"
 # Runs twisted console (reactor already running)
@@ -147,14 +155,10 @@ alias twistedconsole="python -m twisted.conch.stdio"
 alias ubuntuversion="lsb_release -a"
 # List local users from /etc/passwd
 alias userslocal="cut -d: -f1 /etc/passwd | sort"
+# Use valgrind's memcheck tool with full leak check.
+alias valgrindmemcheck="valgrind --tool=memcheck --leak-check=full --track-origins=yes"
 # Monitor who is pinging this machine.
 alias watchpings="sudo tcpdump -i w0 icmp and icmp[icmptype]=icmp-echo"
-# Opens a Postgres shell for welbornprod_db.
-alias wpdb="psql welbornprod_db"
-# Opens SFTP session for welbornprod.com
-alias wpsftp="sftp cjwelborn@cjwelborn.webfactional.com"
-# Opens SSH session on welbornprod.com
-alias wpssh="ssh -X cjwelborn@cjwelborn.webfactional.com"
 
 # Functions:
 function apache {
@@ -258,8 +262,7 @@ function cdgodir {
     fi
 
     local godirname
-    godirname="$(godir "$1")"
-    if (( $? == 0 )); then
+    if godirname="$(godir "$1")"; then
         cd "$godirname" || return 1
         return 0
     fi
@@ -327,7 +330,7 @@ function cj_aliases {
             printf "%s%s%s " "$green" "$cmdname" "$NC"
             printf "%s%s%s\n" "$cyan" "$cmdargs" "$NC"
         fi
-    done < <(egrep '^alias' "$filename" | cut -d ' ' -f2-)
+    done < <(grep -E '^alias' "$filename" | cut -d ' ' -f2-)
 }
 
 function cj_functions {
@@ -375,7 +378,7 @@ function cj_functions {
         else
             printf "%s%s%s\n" "$cyan" "$body" "$NC"
         fi
-    done < <(egrep '^function' "$filename" | cut -d ' ' -f2)
+    done < <(grep -E '^function' "$filename" | cut -d ' ' -f2)
 }
 
 function diff {
@@ -805,6 +808,30 @@ xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
 FZF-EOF"
 }
 
+function hilite {
+    # Use `highlight` to syntax-highlight a file.
+    # Syntax is based on file extension, and if it's not covered here,
+    # the `highlight` error message will let you know what to do.
+    (($#)) || {
+        if [[ -t 0 ]] && [[ -t 1 ]]; then
+            printf "Reading from stdin until EOF (Ctrl + D)...\n"
+        fi
+    }
+    declare -a hlargs
+    local arg ext
+    for arg; do
+        [[ "$*" =~ -S ]] && break;
+        [[ "$arg" =~ .+?[Mm]akefile ]] && {
+            hlargs+=("-S" "makefile")
+            continue
+        }
+        [[ "$arg" == *.* ]] || continue
+        ext="${arg##*.}"
+        hlargs+=("-S" "$ext")
+    done
+    highlight -O xterm256 --style=molokai "${hlargs[@]}" "$@"
+}
+
 function inetinfo {
     # show current internet information
     echo -e "\nYou are logged on ${RED}$HOST"
@@ -838,6 +865,33 @@ function kd {
         ls -a --group-directories-first --color=always
     fi
 
+}
+
+function lf {
+    # Shortcut to ls -dah (doesn't expand directories),
+    # If you don't provide any arguments to `ls -dah`, it simply prints '.'.
+    # That's not very useful, so this functions ensures that it will show
+    # all files in the current directory when no other arguments are used.
+    (($#)) || {
+        # No args, the -- is for shellcheck, it claims that it could cause trouble.
+        # It also doesn't like the use of the builtin \ls.
+        # shellcheck disable=SC1001
+        \ls -dah --group-directories-first --color=always -- *
+        return
+    }
+    (($# == 1)) && {
+        # One arg, if it's a directory this is just going to print the
+        # directory name, which is useless. cd and add a '*' to list all files.
+        [[ -d $1 ]] && {
+            #shellcheck disable=SC1001
+            \ls -dah --group-directories-first --color=always -- "$1"/*
+            return
+        }
+    }
+    # Has args, just forward them.
+    # shellcheck disable=SC1001
+    \ls -dah --group-directories-first --color=always "$@"
+    return
 }
 
 function makeasm {
@@ -921,6 +975,29 @@ function makeasm {
     set +x
 }
 
+function manname {
+    # Search man pages, by name only, using regex.
+    # Shortcut to 'whatis --regex '^$1'.
+    local usage_str="manname (alias from ${BASH_SOURCE[0]})
+
+Usage:
+    manname PATTERN
+
+Options:
+    PATTERN  : Regex/text to search for.
+"
+    [[ -z "$1" ]] && {
+        echo "$usage_str" 1>&2
+        echo -e "\nNo arguments given." 1>&2
+        return 1
+    }
+    [[ "$1" =~ (-h)|(--help) ]] && {
+        echo "$usage_str"
+        return 0
+    }
+    whatis --regex "$1"
+}
+
 function mkdircd {
     # Make dir and cd to it
     # mkdir -p "$@" && eval cd "\"\$$#\""
@@ -954,6 +1031,47 @@ function move_to_col {
     local colnum="${1-0}"
     echo -en "\\033[${colnum}G"
 }
+
+function mvmk {
+    # Move a file to a sub-directory, but create the directory if it doesn't
+    # exist.
+    # Arguments:
+    #   $1  : File to move.
+    #   $2  : Destination (can be a sub-dir to create, or complete path.)
+    if [[ -z "$1" ]] || [[ -z "$2" ]] || [[ "$1" =~ ^(-h)|(--help)$ ]]; then
+        echo -e "\nThis is the \`mvmk\` function from bash.alias.sh."
+        echo -e "\n    It moves files, but will create the destination dir if needed."
+        echo -e "\n    Usage: mvmk FILE DEST"
+        return 0
+    fi
+    local filepath="$1" destpath="$2"
+    local destdir="${destpath%/*}"
+    [[ -n "$destdir" ]] || {
+        # No destination directory.
+        mv "$filepath" "$destpath" || {
+            echo_err "Cannot move simple file: $filepath"
+            echo_err "                     to: $destpath"
+            return 1
+        }
+        echo "mv $filepath $destpath"
+        return 0
+    }
+    [[ -d "$destdir" ]] || {
+        mkdir -p "$destdir" || {
+            echo_err "Cannot create directory: $destdir"
+            return 1
+        }
+        echo "mkdir $destdir"
+    }
+    mv "$filepath" "$destpath" && {
+        echo "mv $filepath $destpath"
+        return 0
+    }
+    echo_err "Cannot move: $filepath"
+    echo_err "         to: $destpath"
+    return 1
+}
+
 
 function my_ip {
     # set MY_IP variable
@@ -1463,7 +1581,7 @@ function ziplist {
 # echo_safe is only set when bash.bashrc is sourced, but
 # this alias file is sourced in a git alias, so forget this echo.
 type -t echo_safe &>/dev/null && {
-    if aliascnt="$(egrep '^((function)|(alias))' ~/bash.alias.sh | wc -l)"; then
+    if aliascnt="$(grep -c -E '^((function)|(alias))' ~/bash.alias.sh)"; then
         aliasplural="aliases/functions"
         ((aliascnt == 1)) && aliasplural="alias/function"
         echo_safe "$aliascnt $aliasplural loaded from" "${BASH_SOURCE[0]}"

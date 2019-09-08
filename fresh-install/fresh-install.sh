@@ -21,7 +21,7 @@ shopt -s nullglob
 
 # App name should be filename-friendly.
 appname="fresh-install"
-appversion="0.3.2"
+appversion="0.3.3"
 apppath="$(readlink -f "${BASH_SOURCE[0]}")"
 appscript="${apppath##*/}"
 appdir="${apppath%/*}"
@@ -49,7 +49,7 @@ filename_remote_debs="$appdir/remote-debs.txt"
 dir_installscripts="$appdir/installscripts"
 declare -a install_script_files install_scripts
 if [[ -d "$dir_installscripts" ]]; then
-    # Get ALL files in ./installscripts, but only used script-like files.
+    # Get ALL files in ./installscripts, but only use script-like files.
     # The file will be made executable later, if not already executable.
     install_script_files=(${dir_installscripts}/*)
     # Files that AREN'T install scripts for sure (by extension):
@@ -362,10 +362,15 @@ function find_pip {
     # TODO: This 'cut -d' '-f1' may fail in the future, when pip switches to columns.
     debug "Listing pip${ver} packages with \`$exepath list\`..."
     for pkgname in $($exepath list 2>/dev/null | cut -d' ' -f1); do
+        # Could do | tail -n+3, but that would break compatibility with old versions.
+        [[ "$pkgname" == Package*Version ]] && continue
+        [[ "$pkgname" == ----* ]] && continue
         pippkgs[$pkgname]="global"
     done
     debug "Listing local user packages with \`$exepath list --user\`..."
     for pkgname in $($exepath list --user 2>/dev/null | cut -d' ' -f1); do
+        [[ "$pkgname" == Package*Version ]] && continue
+        [[ "$pkgname" == ----* ]] && continue
         pippkgs[$pkgname]="local"
     done
 
@@ -467,7 +472,7 @@ function install_apt_packages {
 
 function install_config {
     # Install config files from github.com/cjwelborn/config.git
-    local repodir=~/clones/config
+    local repodir=~/clones/config localdir=$PWD
     if ((dry_run)); then
         echo "Creating real directory for dry run."
         mkdir -p "$repodir" || return 1
@@ -488,11 +493,19 @@ function install_config {
         debug "Updating config submodules..."
         if ! git submodule update --init; then
             echo_err "Failed to update submodules!"
-            cd -
+            cd - || {
+                echo_err "Failed to cd back to $repodir"
+                echo_err "Need to do: rm -r $repodir"
+                return 1;
+            }
             [[ -n "$repodir" && -e "$repodir" ]] && rm -r "$repodir"
             return 1
         fi
-        cd -
+        cd - || {
+            echo_err "Failed to cd back to: $localdir"
+            echo_err "No config files will be copied."
+            return 1
+        }
     fi
     local home="${HOME:-/home/$USER}"
     debug "Copying config files..."

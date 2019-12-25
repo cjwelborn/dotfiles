@@ -250,6 +250,13 @@ function powerprompt() {
     esac
 }
 powerline_file="$cjhome/powerline-shell.py"
+powerline_exe="$cjhome/.local/bin/powerline-shell"
+if [[ ! -e "$powerline_file" ]] && [[ -e "$powerline_exe" ]]; then
+    powerline_file=$powerline_exe
+    bashextraslog "Using powerline executable: $powerline_exe"
+fi
+unset powerline_exe
+
 # Powerline-shell prompt.
 function _update_powerline_ps1() {
   # Maximum number of directories to show. -Set by Cj.
